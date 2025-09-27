@@ -1,2 +1,3 @@
 # nixflow-dna-sequencing
-NixOS + Nextflow workflow for dna (Master Thesis: Trinh, 2025)
+NixOS + Nextflow workflow for dna sequencing. Project for CBMI research group at HTW Berlin. (Master's thesis: Trinh, 2025)
+
