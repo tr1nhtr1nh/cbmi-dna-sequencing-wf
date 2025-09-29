@@ -10,11 +10,6 @@
       system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; };
     in {
-
-      packages.${system} = {
-       git = pkgs.git;
-      };
-
       devShells.${system}.default = pkgs.mkShell {
         buildInputs = [
           pkgs.git
