@@ -11,7 +11,7 @@
       pkgs = import nixpkgs { inherit system; };
     in {
 
-      packages.${system}.default = {
+      packages.${system} = {
        git = pkgs.git;
       };
 
