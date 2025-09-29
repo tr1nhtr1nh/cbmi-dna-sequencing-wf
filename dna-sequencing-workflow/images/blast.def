@@ -1,0 +1,2 @@
+Bootstrap: docker
+From: ncbi/blast:2.16.0

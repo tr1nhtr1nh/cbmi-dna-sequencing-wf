@@ -1,0 +1,13 @@
+Bootstrap: docker
+From: alpine:3.20.2
+
+%post
+   apk update
+   apk upgrade
+   apk add bash tar libc6-compat python3
+
+   wget http://github.com/bbuchfink/diamond/releases/download/v2.1.9/diamond-linux64.tar.gz
+   tar x -zf diamond-linux64.tar.gz --no-same-owner
+   rm diamond-linux64.tar.gz
+   
+   mv diamond /usr/local/bin
