@@ -7,7 +7,7 @@
 
   outputs = { self, nixpkgs }:
     let
-      system = "x86_64-linux"; # ggf. auf aarch64-darwin oder aarch64-linux ändern
+      system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; };
     in {
       devShells.${system}.default = pkgs.mkShell {
