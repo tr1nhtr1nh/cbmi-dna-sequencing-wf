@@ -1,5 +1,5 @@
 {
-  description = "Welcome to the development shell for the master's thesis project";
+  description = "A flake file for the master's thesis project";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -10,11 +10,12 @@
       system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; };
     in {
+      # For global installation run: nix profile install .#git
+      # or nix profile install nixpkgs#git
+      packages.${system}.git = pkgs.git;
       devShells.${system}.default = pkgs.mkShell {
-        buildInputs = [
-          pkgs.git
-          pkgs.nextflow
-        ];
+        # Add more tools here, only avaiable in devShell
+        [ pkgs.git pkgs.nextflow ]                  
       };
     };
 }
