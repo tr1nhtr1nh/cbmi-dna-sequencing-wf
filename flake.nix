@@ -17,8 +17,14 @@
         # Add more tools here, only avaiable in devShell
         buildInputs = [ pkgs.git pkgs.nextflow pkgs.singularity ];
         shellHook = ''
-          echo "Welcome to the devShell!"
+          echo "Welcome to the development shell!"
         '';
       };
+      devShells.${system}.benchmarking = pkgs.mkShell {
+        buildInputs =[];
+        shellHook = ''
+          echo "Welchome to the benchmarking shell!"
+        '';
+       }
     };
 }
