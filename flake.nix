@@ -1,3 +1,7 @@
+#references:
+# https://wiki.nixos.org/wiki/Flakes 
+# https://discourse.nixos.org/t/allow-unfree-in-flakes/29904
+
 {
   description = "A flake file for the master's thesis project";
 
@@ -8,23 +12,20 @@
   outputs = { self, nixpkgs }:
     let
       system = "x86_64-linux";
-      pkgs = import nixpkgs { inherit system; };
+      # ref: https://discourse.nixos.org/t/allow-unfree-in-flakes/29904
+      # need to add "config.allowUnfree = true" for sratoolkit
+      pkgs = import nixpkgs { inherit system; config.allowUnfree = true; };
     in {
       # For global installation run: nix profile install .#git
       # or nix profile install nixpkgs#git
       packages.${system}.git = pkgs.git;
+
       devShells.${system}.default = pkgs.mkShell {
         # Add more tools here, only avaiable in devShell
-        buildInputs = [ pkgs.git pkgs.nextflow pkgs.singularity ];
+        buildInputs = [ pkgs.git pkgs.nextflow pkgs.singularity pkgs.sratoolkit ];
         shellHook = ''
           echo "Welcome to the development shell!"
-        '';
+   	'';
       };
-      devShells.${system}.benchmarking = pkgs.mkShell {
-        buildInputs =[];
-        shellHook = ''
-          echo "Welchome to the benchmarking shell!"
-        '';
-       }
     };
 }
