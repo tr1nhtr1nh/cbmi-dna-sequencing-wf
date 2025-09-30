@@ -15,7 +15,10 @@
       packages.${system}.git = pkgs.git;
       devShells.${system}.default = pkgs.mkShell {
         # Add more tools here, only avaiable in devShell
-        [ pkgs.git pkgs.nextflow ]                  
+        buildInputs = [ pkgs.git pkgs.nextflow pkgs.singularity ];
+	shellHook = ''
+	  echo "Welcome to the devShell!"
+	'';
       };
     };
 }
