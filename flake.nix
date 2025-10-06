@@ -1,14 +1,12 @@
 # references:
 # https://wiki.nixos.org/wiki/Flakes 
 # https://discourse.nixos.org/t/allow-unfree-in-flakes/29904
-# nixos-vscode-server support (failed): https://github.com/nix-community/nixos-vscode-server
 
 {
   description = "A flake file for the master's thesis project";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    #vscode-server.url = "github:nix-community/nixos-vscode-server";
    };
 
   outputs = { self, nixpkgs }:
@@ -24,18 +22,10 @@
 
       devShells.${system}.default = pkgs.mkShell {
         # Add more tools here, only avaiable in devShell
-        buildInputs = [ pkgs.git pkgs.nextflow pkgs.singularity pkgs.sratoolkit ];
+        buildInputs = [ pkgs.git pkgs.nextflow pkgs.singularity pkgs.sratoolkit pkgs.pigz];
         shellHook = ''
           echo "Welcome to the development shell!"
    	'';
       };
-     # nixosConfigurations.pumpkin03 = nixpkgs.lib.nixosSystem {
-     #   modules = [
-     #     vscode-server.nixosModules.default
-     #     ({ config, pkgs, ... }: {
-     #       services.vscode-server.enable = true;
-     #     })
-     #   ];
-     # };
     };
 }
