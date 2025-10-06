@@ -44,5 +44,5 @@ data/*
 *.csv
 test_*
 *.sif
-*/sratoolkit/
+*/sra/
 */work/
