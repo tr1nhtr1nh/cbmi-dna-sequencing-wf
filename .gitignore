@@ -26,7 +26,7 @@ tools/*
 tests_other
 other
 docs/_build/
-./*.txt
+*.txt
 errors/
 misc/
 cloud/my-*
