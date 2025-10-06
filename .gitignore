@@ -4,3 +4,9 @@ result-*
 
 # Ignore automatically generated direnv output
 .direnv
+.nextflow.log*
+.vscode
+
+dna-sequencing-workflow/workflow/assessions.txt
+dna-sequencing-workflow/workflow/sratoolkit/
+dna-sequencing-workflow/workflow/work
