@@ -1,0 +1,3 @@
+task_id	hash	native_id	name	status	exit	submit	duration	realtime	%cpu	peak_rss	peak_vmem	rchar	wchar
+2	cd/1b3642	4010597	FETCH_ACCESSION_INFO (1)	FAILED	127	2025-10-06 12:29:35.615	62ms	21ms	-	-	-	-	-
+1	d9/a84128	4010601	CREATE_DL_COM	FAILED	127	2025-10-06 12:29:35.629	55ms	2ms	-	-	-	-	-

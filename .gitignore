@@ -10,3 +10,5 @@ result-*
 dna-sequencing-workflow/workflow/assessions.txt
 dna-sequencing-workflow/workflow/sratoolkit/
 dna-sequencing-workflow/workflow/work
+dna-sequencing-workflow/workflow/data
+
