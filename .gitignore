@@ -39,10 +39,10 @@ temp
 plugins-prod
 sandbox
 wave-tests
-data/*
+**/data/
 /SRR*
 *.csv
 test_*
 *.sif
 */sra/
-*/work/
+**/work/
