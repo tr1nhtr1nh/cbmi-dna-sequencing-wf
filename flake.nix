@@ -1,9 +1,8 @@
 # references:
 # https://wiki.nixos.org/wiki/Flakes 
-# https://discourse.nixos.org/t/allow-unfree-in-flakes/29904
 
 {
-  description = "A flake file for the master's thesis project";
+  description = "A flake file for the master's thesis project with cbmi and the ngs pipeline";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -21,11 +20,11 @@
       packages.${system}.git = pkgs.git;
 
       devShells.${system}.default = pkgs.mkShell {
-        # Add more tools here, only avaiable in devShell
+        # Add more tools here, only avaiable in devShell, make sure to choose a pkgs
         buildInputs = [ pkgs.git pkgs.nextflow pkgs.singularity pkgs.sratoolkit pkgs.pigz];
         shellHook = ''
-          echo "Welcome to the development shell!"
-   	'';
+          echo "Welcome to the development shell for the ngs pipeline project!"
+   	    '';
       };
     };
 }
