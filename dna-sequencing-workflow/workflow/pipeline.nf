@@ -71,7 +71,7 @@ process FETCH_ACCESSION_INFO {
 
     maxRetries 3
     
-    container 'file://images/sra-tools.sif'
+    container '../images/sra-tools.sif'
 
     input:
     val accession   // accession ID for which information is to be fetched
@@ -96,7 +96,7 @@ process FETCH_ACCESSION {
     errorStrategy { task.exitStatus == 28 ? 'ignore' : 'terminate'}
     maxRetries 3
 
-    container 'file://images/sra-tools.sif'
+    container '../images/sra-tools.sif'
 
     input:
     val accession   // accession ID to be fetched
@@ -170,7 +170,7 @@ process FASTERQ {
     cpus 1
     memory '1 GB'
 
-    container 'file://images/sra-tools.sif'
+    container '../images/sra-tools.sif'
 
     input:
     path accession              // fetched accession file
@@ -197,7 +197,7 @@ process MAPPING {
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
-    container 'file://images/bwa-mem.sif'
+    container '../images/bwa-mem.sif'
     
     input:
     path mapping_databases  // Reference databases for mapping
@@ -229,7 +229,7 @@ process KRAKEN {
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
-    container 'file://images/kraken.sif'
+    container '../images/kraken.sif'
     
     input:
     path kraken2_database   // Kraken2 database for classification
@@ -265,7 +265,7 @@ process BLAST_X {
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
-    container 'file://images/diamond.sif'
+    container '../images/diamond.sif'
     
     input:
     path blastx_database    // BLASTX database for similarity search
@@ -297,7 +297,7 @@ process BLAST_N {
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
-    container 'file://images/blast.sif'
+    container '../images/blast.sif'
     
     input:
     path blastn_database    // BLASTN database for similarity search
