@@ -25,7 +25,7 @@
           pkgs.git 
           pkgs.nextflow 
           pkgs.singularity 
-          pkgs.sratoolkit 
+          # pkgs.sratoolkit # already have container image inside wf pipeline
           pkgs.pigz
         ];
         shellHook = ''
