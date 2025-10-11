@@ -214,7 +214,7 @@ process MAPPING {
     for i in "\${!databases[@]}"; do
         fastq_files=\$(ls ${fastq}/*.fastq)
         ${params.bwa} mem -t ${task.cpus} \${databases[i]}/\${file_names[i]} \$fastq_files > aln.sam
-        python3 ${projectDir}/templates/evaluate.py mapping aln.sam ${fastq} -o /home/dominik/masterarbeit/dna-sequencing-workflow/stats.csv --keep-files
+        python3 ${projectDir}/templates/evaluate.py mapping aln.sam ${fastq} -o ${projectDir}/stats.csv --keep-files
     done
     """
 
@@ -251,7 +251,7 @@ process KRAKEN {
             kraken2 --threads ${task.cpus} --db \$database \$fastq_files > results.txt
         fi
 
-        python3 ${projectDir}/templates/evaluate.py kraken results.txt ${fastq} -o /home/dominik/masterarbeit/dna-sequencing-workflow/stats.csv
+        python3 ${projectDir}/templates/evaluate.py kraken results.txt ${fastq} -o /data/ldap/projekte/dtrinh_master/nixflow-dna-sequencing/dna-sequencing-workflow/stats.csv
     done
     """
 }
@@ -387,6 +387,14 @@ workflow {
     ch_kraken = params.skip_kraken ? ch_mapping : KRAKEN(params.kraken2_database, ch_mapping)
     ch_blastx = params.skip_blastx ? ch_kraken : BLAST_X(get_parent_name(params.blastx_database), get_name(params.blastx_database), ch_kraken)
     ch_blastn = params.skip_blastn ? ch_blastx : BLAST_N(get_parent_name(params.blastn_database), get_name(params.blastn_database), ch_blastx)
+
+    // pre ReadSeeker script for 6mers 
+
+    // readSeeker
+
+    // post ReadSeeker processing script (Absprache mit Ben)
+
+    // last tool 
 
     // compress and output results
     COMPRESS_RESULTS(ch_blastn)

@@ -46,3 +46,4 @@ test_*
 *.sif
 */sra/
 **/work/
+**/play.nf

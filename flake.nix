@@ -1,36 +1,31 @@
 # references:
 # https://wiki.nixos.org/wiki/Flakes 
+# https://www.youtube.com/watch?v=JCeYq72Sko0&t=803s
+# Alternative: create env with conda
 
 {
   description = "A flake file for the master's thesis project with cbmi and the ngs pipeline";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
    };
 
-  outputs = { self, nixpkgs }:
+  outputs = { self, nixpkgs, kraken2, ... }:
     let
       system = "x86_64-linux";
-      # ref: https://discourse.nixos.org/t/allow-unfree-in-flakes/29904
-      # need to add "config.allowUnfree = true" for sratoolkit
       pkgs = import nixpkgs { inherit system; config.allowUnfree = true; };
     in {
-      # For global installation run: nix profile install .#git (with this flake.nix)
-      # or use profile install nixpkgs#git
-      packages.${system}.git = pkgs.git;
-
       devShells.${system}.default = pkgs.mkShell {
-        # Add more tools here, only avaiable in devShell, make sure to choose a pkgs
-        buildInputs = [ 
-          pkgs.git 
+        buildInputs = [
+          pkgs.git
           pkgs.nextflow 
           pkgs.singularity 
-          # pkgs.sratoolkit 
           pkgs.pigz
         ];
+
         shellHook = ''
           echo "Welcome to the development shell for the ngs pipeline project!"
-   	    '';
+        '';
       };
     };
 }
