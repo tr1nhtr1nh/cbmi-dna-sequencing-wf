@@ -8,7 +8,7 @@ From: alpine:3.20.2
 
    export http_proxy="http://webproxy.rz.htw-berlin.de:3128"
 
-   wget http://github.com/bbuchfink/diamond/releases/download/v2.1.9/diamond-linux64.tar.gz
+   wget http://github.com/bbuchfink/diamond/releases/download/v2.1.14/diamond-linux64.tar.gz
    tar x -zf diamond-linux64.tar.gz --no-same-owner
    rm diamond-linux64.tar.gz
    
