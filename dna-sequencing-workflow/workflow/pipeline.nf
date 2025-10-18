@@ -251,7 +251,7 @@ process KRAKEN {
             kraken2 --threads ${task.cpus} --db \$database \$fastq_files > results.txt
         fi
 
-        python3 ${projectDir}/templates/evaluate.py kraken results.txt ${fastq} -o /data/ldap/projekte/dtrinh_master/nixflow-dna-sequencing/dna-sequencing-workflow/stats.csv
+        python3 ${projectDir}/templates/evaluate.py kraken results.txt ${fastq} -o ${projectDir}/stats.csv
     done
     """
 }
@@ -282,7 +282,7 @@ process BLAST_X {
     for i in "\${!databases[@]}"; do
         for fastq_file in ${fastq}/*.fastq; do
             diamond blastx -d \${databases[i]}/\${file_names[i]} -q \$fastq_file --very-sensitive --outfmt 6 qseqid -p ${task.cpus} --out result.txt
-            python3 ${projectDir}/templates/evaluate.py blastx result.txt ${fastq} -o /home/dominik/masterarbeit/dna-sequencing-workflow/stats.csv
+            python3 ${projectDir}/templates/evaluate.py blastx result.txt ${fastq} -o ${projectDir}/stats.csv
         done
     done
     """
@@ -321,6 +321,19 @@ process BLAST_N {
     done
     """
 }
+
+// process PREREADSEEKER {
+//     input: 
+//     path fastq
+
+//     output: 
+//     path fastq
+
+//     script:
+//     """
+//     #python3 processing.py --pre fastq > fastq.sra
+//     """
+// }
 
 // compress the results into a tar.gz archive
 process COMPRESS_RESULTS {
