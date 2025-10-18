@@ -47,3 +47,4 @@ test_*
 */sra/
 **/work/
 **/play.nf
+**/refseq/*
