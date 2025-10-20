@@ -268,7 +268,7 @@ process BLAST_X {
     container '../images/diamond.sif'
     
     input:
-    path blastx_database    // BLASTX database for similarity search
+    path blastx_database    // BLASTX database for similarity search (needs protein db as file, which is of type *.faa)
     val db_names            // Names of the BLASTX database files
     path fastq              // Path to the FASTQ files for BLASTX processing
 
@@ -314,9 +314,9 @@ process BLAST_N {
     for i in "\${!databases[@]}"; do
         for fastq_file in ${fastq}/*.fastq; do
             sed -n '1~4s/^@/>/p;2~4p' \$fastq_file > acc.fasta
-            blastn -db \${databases[i]}/\${file_names[i]} -outfmt "6 qseqid" -num_threads ${task.cpus} -query acc.fasta -out results.txt
+            blastn -db \${databases[i]}/\${file_names[i]} -outfmt "7 qseqid sseqid pident length evalue bitscore" -num_threads ${task.cpus} -query acc.fasta -out results.txt
             rm acc.fasta
-            python3 ${projectDir}/templates/evaluate.py blastn results.txt ${fastq} -o /home/dominik/masterarbeit/dna-sequencing-workflow/stats.csv
+            python3 ${projectDir}/templates/evaluate.py blastn results.txt ${fastq} -o ${projectDir}/stats.csv
         done
     done
     """
