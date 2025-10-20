@@ -274,6 +274,7 @@ process BLAST_X {
 
     output:
     path fastq              // Path to the modified FASTQ files
+    path "blastx_result.txt"       // Path to result.txt file (inside workDir)
 
     script:
     """
@@ -281,8 +282,8 @@ process BLAST_X {
     file_names=(\$(echo "${db_names}" | sed "s/^\\[\\(.*\\)\\]\$/\\1/" | sed -e "s/, */,/g" | tr "," "\n"))
     for i in "\${!databases[@]}"; do
         for fastq_file in ${fastq}/*.fastq; do
-            diamond blastx -d \${databases[i]}/\${file_names[i]} -q \$fastq_file --very-sensitive --outfmt 6 qseqid -p ${task.cpus} --out result.txt
-            python3 ${projectDir}/templates/evaluate.py blastx result.txt ${fastq} -o ${projectDir}/stats.csv
+            diamond blastx -d \${databases[i]}/\${file_names[i]} -q \$fastq_file --very-sensitive --outfmt 6 qseqid -p ${task.cpus} --out blastx_result.txt
+            python3 ${projectDir}/templates/evaluate.py blastx blastx_result.txt ${fastq} -o ${projectDir}/stats.csv
         done
     done
     """
@@ -306,6 +307,7 @@ process BLAST_N {
 
     output:
     path fastq              // Path to the modified FASTQ files
+    path "blastn_results.txt"
 
     script:
     """
@@ -314,9 +316,9 @@ process BLAST_N {
     for i in "\${!databases[@]}"; do
         for fastq_file in ${fastq}/*.fastq; do
             sed -n '1~4s/^@/>/p;2~4p' \$fastq_file > acc.fasta
-            blastn -db \${databases[i]}/\${file_names[i]} -outfmt "7 qseqid sseqid pident length evalue bitscore" -num_threads ${task.cpus} -query acc.fasta -out results.txt
+            blastn -db ${projectDir}/refseq/\${databases[i]}/\${file_names[i]} -outfmt "7 qseqid sseqid pident length evalue bitscore" -num_threads ${task.cpus} -query acc.fasta -out blastn_results.txt
             rm acc.fasta
-            python3 ${projectDir}/templates/evaluate.py blastn results.txt ${fastq} -o ${projectDir}/stats.csv
+            python3 ${projectDir}/templates/evaluate.py blastn blastn_results.txt ${fastq} -o ${projectDir}/stats.csv
         done
     done
     """
