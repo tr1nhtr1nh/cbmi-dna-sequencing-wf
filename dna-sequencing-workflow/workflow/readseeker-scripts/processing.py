@@ -14,24 +14,53 @@
 # process blastn will be input 
 
 import argparse
+import os
 
-def preprocessing(fd, args):
+def preprocessing(src, dest):
     """
     Read 6-mers from 
     Remember nextflow input and output channels
     
     input: 
-        fd          : file descriptor (number) to fastaq
+        filepath: filepath to fastq file
 
     return: 
-        result      : preprocessed fastq files
+        result. file descriptor to 
     """
+    with open(src, "r") as input, open(dest, "w") as output:
+        while True:
+            header = input.readline().strip()
+            if not header:
+                break
+            seq = input.readline().strip()
+            input.readline()
+            input.readline()
+            
+            kmers = seq_to_kmers(seq, 6)
+            kmers_line = " ".join(kmers)
+
+            output.write(f"{kmers_line}\t\t{header}\n")    
     return
+
+# helpers
+def seq_to_kmers(seq, k=6):
+    return [seq[i:i+k] for i in range(len(seq) - k + 1)]
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
                         prog='ReadSeeker pre- and post-processing script',
                         description='(pre) Turn fastq output from bioinformatic pipeline tools (last one is blast) to custom 6-mers format. (post) Do something else.',
-                        epilog='Text at the bottom of help')    
-    
-    parser.add_argument("--pre", type=str, help="run processing prior to readseeker process")
+                        epilog='Example: python preprocessing.py --pre -f src.fastq -o dest.fastq')
+
+    mode_group = parser.add_mutually_exclusive_group(required=True)
+    mode_group.add_argument("--pre", action="store_true", help="pre process readseeker input data")
+    mode_group.add_argument("--post", action="store_true", help="post process readseeker input data")
+    parser.add_argument("-f", "--file", type=str, help="source file path", required=True)
+    parser.add_argument("-o", "--out", type=str, help="destination file path", required=True)
+    args = parser.parse_args()
+
+    outdir = os.path.dirname(args.out)
+    if outdir:
+        os.makedirs(outdir, exist_ok=True)
+
+    preprocessing(args.file, args.out)
