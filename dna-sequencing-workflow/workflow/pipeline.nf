@@ -165,6 +165,7 @@ process FETCH_ACCESSION {
 }
 
 // convert fetched accession data into FASTQ format
+// (optional) How can I check already downloaded .sra files
 process FASTERQ {
     maxForks 2
     cpus 1
@@ -182,8 +183,8 @@ process FASTERQ {
     script:
     """
     ${params.fasterq_dump} ${accession} -O ${accession}_fastq
-    rm -r \$(readlink ${accession})
-    rm -r ${accession}
+    #rm -r \$(readlink ${accession})
+    #rm -r ${accession}
     flock -x ${dl_com} echo 'C ${accession}' >> ${dl_com}
     """
 }
@@ -197,7 +198,8 @@ process MAPPING {
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
-    container '../images/bwa-mem.sif'
+    // container '../images/bwa-mem.sif'
+    container '../images/bwa-samtools.sif'
     
     input:
     path mapping_databases  // Reference databases for mapping
@@ -206,21 +208,37 @@ process MAPPING {
 
     output:
     path fastq              // Path to the modified FASTQ files
+    // path unmapped           // unmapped
 
+    // Update: use samtools 
+    // Alternative without samtools: awk '($2 & 4) != 0' input.sam > unmapped.sam
     script:
     """
     databases=(\$(echo "${mapping_databases}" | tr " " "\n"))
     file_names=(\$(echo "${index_files}" | sed "s/^\\[\\(.*\\)\\]\$/\\1/" | sed -e "s/, */,/g" | tr "," "\n"))
     for i in "\${!databases[@]}"; do
         fastq_files=\$(ls ${fastq}/*.fastq)
+        echo "ALIGNMENT: Start aligning reads to a reference genome: ${index_files}..."
         ${params.bwa} mem -t ${task.cpus} \${databases[i]}/\${file_names[i]} \$fastq_files > aln.sam
+        echo "FILTER: Start filtering aligned sam file..."
+        # awk '($2 & 4) != 0' aln.sam > unmapped.sam
+        samtools view -f 4 -h aln.sam > unmapped.sam
         python3 ${projectDir}/templates/evaluate.py mapping aln.sam ${fastq} -o ${projectDir}/stats.csv --keep-files
     done
     """
-
 }
 
+// Alternative:
+// process SAMTOOLS {
+//     /*
+//     We need samtools to filter the aligned datasets.
+//     Get channel output from Mapping and process 
+//     */
+// }
+
 // run Kraken2 on FASTQ files for taxonomic classification
+// Discuss which data format is needed
+// Add filtering options: kraken2 --threads ${task.cpus} --db \$database --paired --unclassified-out \$fastq_files  > results.txt 
 process KRAKEN {
     maxForks 1
     cpus params.cpu.kraken
@@ -274,7 +292,7 @@ process BLAST_X {
 
     output:
     path fastq              // Path to the modified FASTQ files
-    path "blastx_result.txt"       // Path to result.txt file (inside workDir)
+    // path "blastx_result.txt"       // Path to result.txt file (inside workDir)
 
     script:
     """
@@ -282,8 +300,8 @@ process BLAST_X {
     file_names=(\$(echo "${db_names}" | sed "s/^\\[\\(.*\\)\\]\$/\\1/" | sed -e "s/, */,/g" | tr "," "\n"))
     for i in "\${!databases[@]}"; do
         for fastq_file in ${fastq}/*.fastq; do
-            diamond blastx -d \${databases[i]}/\${file_names[i]} -q \$fastq_file --very-sensitive --outfmt 6 qseqid -p ${task.cpus} --out blastx_result.txt
-            python3 ${projectDir}/templates/evaluate.py blastx blastx_result.txt ${fastq} -o ${projectDir}/stats.csv
+            diamond blastx -d \${databases[i]}/\${file_names[i]} -q \$fastq_file --very-sensitive --outfmt 6 qseqid -p ${task.cpus} --out result.txt
+            python3 ${projectDir}/templates/evaluate.py blastx result.txt ${fastq} -o ${projectDir}/stats.csv
         done
     done
     """
@@ -307,18 +325,25 @@ process BLAST_N {
 
     output:
     path fastq              // Path to the modified FASTQ files
-    path "blastn_results.txt"
+    // path "blastn_results.txt"
+
+    /*
+        Notice in line 325 (calling blastn -db): You're directory structure might look different. 
+        Make sure you're setting the correct path relative from the nextflow project directory to the blast databases.
+        The project directory is the folder where the main *.nf Nextflow file resides.
+    */
 
     script:
     """
     databases=(\$(echo ${blastn_database} | tr " " "\n"))
     file_names=(\$(echo "${db_names}" | sed "s/^\\[\\(.*\\)\\]\$/\\1/" | sed -e "s/, */,/g" | tr "," "\n"))
     for i in "\${!databases[@]}"; do
+        echo "Starting Basic Local Alignment Search Tool on ${projectDir}/refseq/\${databases[i]}/\${file_names[i]} database ..."
         for fastq_file in ${fastq}/*.fastq; do
             sed -n '1~4s/^@/>/p;2~4p' \$fastq_file > acc.fasta
-            blastn -db ${projectDir}/refseq/\${databases[i]}/\${file_names[i]} -outfmt "7 qseqid sseqid pident length evalue bitscore" -num_threads ${task.cpus} -query acc.fasta -out blastn_results.txt
-            rm acc.fasta
-            python3 ${projectDir}/templates/evaluate.py blastn blastn_results.txt ${fastq} -o ${projectDir}/stats.csv
+            blastn -db ${projectDir}/refseq/\${databases[i]}/\${file_names[i]} -outfmt "7 qseqid sseqid pident length evalue bitscore" -num_threads ${task.cpus} -query acc.fasta -out result.txt
+            #rm acc.fasta
+            python3 ${projectDir}/templates/evaluate.py blastn result.txt ${fastq} -o ${projectDir}/stats_test.csv
         done
     done
     """
@@ -337,14 +362,17 @@ process BLAST_N {
 //     """
 // }
 
+/*
+process POSTREADSEEKER 
+*/
+
 // compress the results into a tar.gz archive
 process COMPRESS_RESULTS {
     maxForks 1
     cpus 1
     memory '200 MB'
 
-    publishDir params.output, mode: 'symlink'
-
+    publishDir params.output, mode: 'move'      // move output to ./data/
     input:
     path fastq                  // Path to the FASTQ files to be compressed
 
@@ -354,8 +382,8 @@ process COMPRESS_RESULTS {
     script:
     """
     tar --use-compress-program="pigz " -cf ${fastq}.tar.gz ${fastq}/*
-    rm -r \$(readlink ${fastq})
-    rm -r ${fastq}
+    #rm -r \$(readlink ${fastq})
+    #rm -r ${fastq}
     """
 
 }
