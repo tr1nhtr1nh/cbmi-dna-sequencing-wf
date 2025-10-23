@@ -34,7 +34,7 @@ cd images
 Build each Singularity image using the definition files provided. For example:
 ```
 singularity build --fakeroot sra-tools.sif sra-tools.def
-singularity build --fakeroot bwa-mem.sif bwa-mem.def
+singularity build --fakeroot bwa-samtools.sif bwa-samtools.def
 singularity build --fakeroot kraken.sif kraken.def
 singularity build --fakeroot diamond.sif diamond.def
 singularity build --fakeroot blast.sif blast.def

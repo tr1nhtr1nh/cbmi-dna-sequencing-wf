@@ -1,0 +1,24 @@
+Bootstrap: docker
+From: alpine:3.20.2
+
+%post
+    apk update
+    apk upgrade
+
+    echo "Installing BWA-MEM2"
+    apk add bash tar libc6-compat libstdc++ libgcc python3 wget
+    wget https://github.com/bwa-mem2/bwa-mem2/releases/download/v2.2.1/bwa-mem2-2.2.1_x64-linux.tar.bz2
+    tar x -j -f bwa-mem2-2.2.1_x64-linux.tar.bz2 --no-same-owner
+    rm bwa-mem2-2.2.1_x64-linux.tar.bz2
+
+    echo "Installing SAMTOOLS"
+    apk add --no-cache make gcc g++ musl-dev zlib-dev bzip2-dev xz-dev curl-dev ncurses-dev 
+
+    wget https://github.com/samtools/samtools/releases/download/1.22.1/samtools-1.22.1.tar.bz2
+    tar x -j -f samtools-1.22.1.tar.bz2 --no-same-owner
+    cd /samtools-1.22.1 && make
+    cd / && rm samtools-1.22.1.tar.bz2
+    
+%environment
+    export PATH=$PATH:/bwa-mem2-2.2.1_x64-linux
+    export PATH=$PATH:/samtools-1.22.1
