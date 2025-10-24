@@ -6,17 +6,16 @@ def preprocessing(src, dest):
     Reads a FASTQ file from src, extracts only the sequences and their headers, 
     converts each sequence into overlapping 6-mers (sliding window), 
     and writes the result to dest as space-separated 6-mers followed by the original header.
-     
+
     input: 
-        src: source fastq file
-        dest: prepared fastq file
+        src: read from fastq source file
+        dest: write into fastq destination file
 
     return: 
-        result. file descriptor to 
+        result None 
     """
-    
-    k = 6 
-    
+
+    k = 6
     with open(src, "r") as input, open(dest, "w") as output:
         while True:
             header = input.readline().strip()
@@ -28,8 +27,10 @@ def preprocessing(src, dest):
             
             kmers = [seq[i:i+k] for i in range(len(seq) - k + 1)]
             kmers_line = " ".join(kmers)
-
-            output.write(f"{kmers_line}\t\t{header}\n")    
+            
+            filename = os.path.basename(input.name)
+            
+            output.write(f"{kmers_line}\t{header} {filename}\n")
     return
 
 if __name__ == "__main__":
