@@ -48,3 +48,6 @@ test_*
 **/work/
 **/play.nf
 **/refseq/*
+dna-sequencing-workflow/workflow/readseeker-scripts/srr.fastq
+dna-sequencing-workflow/workflow/readseeker-scripts/rs.fastq
+dna-sequencing-workflow/workflow/raw/SRR35359598_fastq/dups.py

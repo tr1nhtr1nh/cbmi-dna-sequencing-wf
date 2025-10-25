@@ -183,8 +183,8 @@ process FASTERQ {
     script:
     """
     ${params.fasterq_dump} ${accession} -O ${accession}_fastq
-    #rm -r \$(readlink ${accession})
-    #rm -r ${accession}
+    rm -r \$(readlink ${accession})
+    rm -r ${accession}
     flock -x ${dl_com} echo 'C ${accession}' >> ${dl_com}
     """
 }
@@ -212,6 +212,8 @@ process MAPPING {
 
     // Update: use samtools 
     // Alternative without samtools: awk '($2 & 4) != 0' input.sam > unmapped.sam
+    // move stats.csv to work dir (maybe output channel), so it does not append
+    // samtools -f 12 (read unmapped + mate unmapped)
     script:
     """
     databases=(\$(echo "${mapping_databases}" | tr " " "\n"))
@@ -221,20 +223,11 @@ process MAPPING {
         echo "ALIGNMENT: Start aligning reads to a reference genome: ${index_files}..."
         ${params.bwa} mem -t ${task.cpus} \${databases[i]}/\${file_names[i]} \$fastq_files > aln.sam
         echo "FILTER: Start filtering aligned sam file..."
-        # awk '($2 & 4) != 0' aln.sam > unmapped.sam
-        samtools view -f 4 -h aln.sam > unmapped.sam
+        # samtools view -f 4 -h aln.sam > unmapped.sam
         python3 ${projectDir}/templates/evaluate.py mapping aln.sam ${fastq} -o ${projectDir}/stats.csv --keep-files
     done
     """
 }
-
-// Alternative:
-// process SAMTOOLS {
-//     /*
-//     We need samtools to filter the aligned datasets.
-//     Get channel output from Mapping and process 
-//     */
-// }
 
 // run Kraken2 on FASTQ files for taxonomic classification
 // Discuss which data format is needed
@@ -266,7 +259,7 @@ process KRAKEN {
         if [[ \$count -gt 1 ]]; then
             kraken2 --threads ${task.cpus} --db \$database --paired \$fastq_files > results.txt
         else
-            kraken2 --threads ${task.cpus} --db \$database \$fastq_files > results.txt
+            kraken2 --threads ${task.cpus} --db \$database \$fastq_files --unclassified-out > results.txt
         fi
 
         python3 ${projectDir}/templates/evaluate.py kraken results.txt ${fastq} -o ${projectDir}/stats.csv
@@ -284,15 +277,14 @@ process BLAST_X {
     maxRetries 3
 
     container '../images/diamond.sif'
-    
+
     input:
-    path blastx_database    // BLASTX database for similarity search (needs protein db as file, which is of type *.faa)
-    val db_names            // Names of the BLASTX database files
-    path fastq              // Path to the FASTQ files for BLASTX processing
+    path blastx_database                // BLASTX database for similarity search (needs protein db as file, which is of type *.faa)
+    val db_names                        // Names of the BLASTX database files
+    path fastq                          // Path to the FASTQ files for BLASTX processing
 
     output:
-    path fastq              // Path to the modified FASTQ files
-    // path "blastx_result.txt"       // Path to result.txt file (inside workDir)
+    path fastq                          // Path to the modified FASTQ files
 
     script:
     """
@@ -342,7 +334,7 @@ process BLAST_N {
         for fastq_file in ${fastq}/*.fastq; do
             sed -n '1~4s/^@/>/p;2~4p' \$fastq_file > acc.fasta
             blastn -db ${projectDir}/refseq/\${databases[i]}/\${file_names[i]} -outfmt "7 qseqid sseqid pident length evalue bitscore" -num_threads ${task.cpus} -query acc.fasta -out result.txt
-            #rm acc.fasta
+            rm acc.fasta
             python3 ${projectDir}/templates/evaluate.py blastn result.txt ${fastq} -o ${projectDir}/stats_test.csv
         done
     done
@@ -363,7 +355,7 @@ process BLAST_N {
 // }
 
 /*
-process POSTREADSEEKER 
+    process POSTREADSEEKER 
 */
 
 // compress the results into a tar.gz archive
@@ -372,20 +364,21 @@ process COMPRESS_RESULTS {
     cpus 1
     memory '200 MB'
 
-    publishDir params.output, mode: 'move'      // move output to ./data/
+    // publishDir params.output, mode: 'move'      // BUG: this just moves a broken symlink to the output folder
+    
     input:
-    path fastq                  // Path to the FASTQ files to be compressed
+    path fastq                                  // Path to the FASTQ files to be compressed
 
     output:
-    path "${fastq}.tar.gz"      // A compressed tar.gz archive of the FASTQ files
+    path "${fastq}.tar.gz"                      // A compressed tar.gz archive of the FASTQ files
 
     script:
     """
     tar --use-compress-program="pigz " -cf ${fastq}.tar.gz ${fastq}/*
-    #rm -r \$(readlink ${fastq})
-    #rm -r ${fastq}
+    cp ${fastq}.tar.gz ${fastq}/* ${projectDir}/${params.output}/
+    rm -r \$(readlink ${fastq})
+    rm -r ${fastq}
     """
-
 }
 
 // extracting name of the parent dir

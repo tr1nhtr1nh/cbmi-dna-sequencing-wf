@@ -7,12 +7,12 @@ def preprocessing(src, dest):
     converts each sequence into overlapping 6-mers (sliding window), 
     and writes the result to dest as space-separated 6-mers followed by the original header.
 
-    input: 
-        src: read from fastq source file
-        dest: write into fastq destination file
+    Params: 
+    src (str): read from fastq source file
+    dest (str): write into fastq destination file
 
-    return: 
-        result None 
+    Returns: 
+    None 
     """
 
     k = 6
