@@ -25,7 +25,7 @@ process FETCH_ACCESSION_INFO {
 
     maxRetries 3
     
-    container '../images/sra-tools.sif'
+    container 'file://../images/sra-tools.sif'
 
     input:
     val accession   // accession ID for which information is to be fetched
@@ -50,7 +50,7 @@ process FETCH_ACCESSION {
     errorStrategy { task.exitStatus == 28 ? 'ignore' : 'terminate'}
     maxRetries 3
 
-    container '../images/sra-tools.sif'
+    container 'file://../images/sra-tools.sif'
 
     input:
     val accession   // accession ID to be fetched
@@ -125,7 +125,10 @@ process FASTERQ {
     cpus 1
     memory '1 GB'
 
-    container '../images/sra-tools.sif'
+    publishDir params.output, mode: 'move' // need to pass fastq to output dir inside every process
+
+
+    container 'file://../images/sra-tools.sif'
 
     input:
     path accession              // fetched accession file
@@ -152,7 +155,7 @@ process MAPPING {
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
-    container '../images/bwa-mem.sif'
+    container 'file://../images/bwa-mem.sif'
     
     input:
     path mapping_databases  // Reference databases for mapping
@@ -193,7 +196,7 @@ process KRAKEN {
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
-    container '../images/kraken.sif'
+    container 'file://../images/kraken.sif'
     
     input:
     path kraken2_database   // Kraken2 database for classification
@@ -229,7 +232,7 @@ process BLAST_X {
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
-    container '../images/diamond.sif'
+    container 'file://../images/diamond.sif'
 
     input:
     path blastx_database                // BLASTX database for similarity search (needs protein db as file, which is of type *.faa)
@@ -261,7 +264,7 @@ process BLAST_N {
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
-    container '../images/blast.sif'
+    container 'file://../images/blast.sif'
     
     input:
     path blastn_database    // BLASTN database for similarity search
@@ -433,6 +436,6 @@ workflow {
     // last tool 
 
     // compress and output results
-    COMPRESS_RESULTS(ch_blastn)
+    COMPRESS_RESULTS(ch_readseeker)
 
 }
