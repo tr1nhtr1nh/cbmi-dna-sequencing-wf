@@ -1,52 +1,6 @@
 #!/usr/bin/env nextflow
 
-VERSION = '1.0.0'
-
-if ( params.help ) {
-    help = """pipeline.nf: This pipeline processes DNA sequencing data through a series of steps
-             |                including fetching accession data, converting to FASTQ format, mapping
-             |                sequences to reference databases and performing taxonomic classification.
-             |                Use --help command to view all available options and their defaults.
-             |Arguments:
-             |  --input_file        Location of the input file file.
-             |                      [default: ${params.input_file}]
-             |  --output            Location of the output directory.
-             |                      [default: ${params.output}]
-             |  --max_disk_usage    Specifies the maximum amount of disk space (in bytes) the application may use.
-             |                      [default: ${params.max_disk_usage}]
-             |  --file_mode         Defines when the application should check the available disk space. The options are 'event' or 'pull'.
-             |                      The 'event' mode monitors all files and only checks the available memory when changes are made. The 'pull'
-             |                      mode checks the memory at regular intervals. The 'pull' mode is recommended when using NFS file systems.
-             |                      [default: ${params.file_mode}]
-             |  --pull_interval     Defines the interval for the disk space check. Only used when --file_mode = 'pull'.
-             |                      [default: ${params.pull_interval}]
-             |  --est_size_fact     Estimated factor of how much more storage space is required for each Accession.
-             |                      [default: ${params.est_size_fact}]
-             |  --prefetch          Location of the prefetch tool, that is part of the SRA Toolkit.
-             |                      [default: ${params.prefetch}]
-             |  --fasterq_dump      Location of the fasterq-dump tool, that is part of the SRA Toolkit.
-             |                      [default: ${params.fasterq_dump}]
-             |  --vdb_dump          Location of the vdb-dump tool, that is part of the SRA Toolkit.
-             |                      [default: ${params.vdb_dump}]
-             |  --bwa               Location of the BWA-MEM2 tool.
-             |                      [default: ${params.bwa}]""".stripMargin()
-    println(help)
-    exit(0)
-}
-
-
-log.info """\
-         DNA-Sequencing-Workflow v${VERSION}
-         ==========================
-         input from   : ${params.input_file}
-         output to    : ${params.output}
-         --
-         run as       : ${workflow.commandLine}
-         started at   : ${workflow.start}
-         config files : ${workflow.configFiles}
-         """
-         .stripIndent()
-
+params.VERSION = '1.0.0'
 
 // create a pipe for download communication
 process CREATE_DL_COM {
@@ -383,8 +337,8 @@ process COMPRESS_RESULTS {
 
 // extracting name of the parent dir
 def get_parent_name(files) {
-    parent_dirs = []
-    for (filename in files) {
+    def parent_dirs = []
+    files.each { filename ->
         File f = new File(filename)
         parent_dirs.add(f.getParentFile().toString())
     }
@@ -393,8 +347,8 @@ def get_parent_name(files) {
 
 // extracting file name of a path
 def get_name(files) {
-    names = []
-    for (filename in files) {
+    def names = []
+    files.each { filename ->
         File f = new File(filename)
         names.add(f.getName().toString())
     }
@@ -403,6 +357,53 @@ def get_name(files) {
 
 // workflow definition
 workflow {
+
+
+    if ( params.help ) {
+        help = """pipeline.nf: This pipeline processes DNA sequencing data through a series of steps
+                |                including fetching accession data, converting to FASTQ format, mapping
+                |                sequences to reference databases and performing taxonomic classification.
+                |                Use --help command to view all available options and their defaults.
+                |Arguments:
+                |  --input_file        Location of the input file file.
+                |                      [default: ${params.input_file}]
+                |  --output            Location of the output directory.
+                |                      [default: ${params.output}]
+                |  --max_disk_usage    Specifies the maximum amount of disk space (in bytes) the application may use.
+                |                      [default: ${params.max_disk_usage}]
+                |  --file_mode         Defines when the application should check the available disk space. The options are 'event' or 'pull'.
+                |                      The 'event' mode monitors all files and only checks the available memory when changes are made. The 'pull'
+                |                      mode checks the memory at regular intervals. The 'pull' mode is recommended when using NFS file systems.
+                |                      [default: ${params.file_mode}]
+                |  --pull_interval     Defines the interval for the disk space check. Only used when --file_mode = 'pull'.
+                |                      [default: ${params.pull_interval}]
+                |  --est_size_fact     Estimated factor of how much more storage space is required for each Accession.
+                |                      [default: ${params.est_size_fact}]
+                |  --prefetch          Location of the prefetch tool, that is part of the SRA Toolkit.
+                |                      [default: ${params.prefetch}]
+                |  --fasterq_dump      Location of the fasterq-dump tool, that is part of the SRA Toolkit.
+                |                      [default: ${params.fasterq_dump}]
+                |  --vdb_dump          Location of the vdb-dump tool, that is part of the SRA Toolkit.
+                |                      [default: ${params.vdb_dump}]
+                |  --bwa               Location of the BWA-MEM2 tool.
+                |                      [default: ${params.bwa}]""".stripMargin()
+        println(help)
+        exit(0)
+    }
+
+
+    log.info """\
+            DNA-Sequencing-Workflow v${params.VERSION}
+            ==========================
+            input from   : ${params.input_file}
+            output to    : ${params.output}
+            --
+            run as       : ${workflow.commandLine}
+            started at   : ${workflow.start}
+            config files : ${workflow.configFiles}
+            """
+            .stripIndent()
+
 
     // setup
     Channel
