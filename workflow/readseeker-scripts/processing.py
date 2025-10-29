@@ -1,5 +1,6 @@
 import argparse
 import os
+import re
 
 def preprocessing(src, dest):
     """
@@ -29,8 +30,9 @@ def preprocessing(src, dest):
             kmers_line = " ".join(kmers)
             
             filename = os.path.basename(input.name)
+            read_number = re.search(r'_(\d+)\.fastq$', filename).group(1)
             
-            output.write(f"{kmers_line}\t{header} {filename}\n")
+            output.write(f"{kmers_line}\t{header} read={read_number}\n")
     return
 
 if __name__ == "__main__":
