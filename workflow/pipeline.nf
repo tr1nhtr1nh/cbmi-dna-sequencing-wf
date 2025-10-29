@@ -87,14 +87,14 @@ process FETCH_ACCESSION {
     }
 
     get_used_space() {
-        local used_space=\$(du -b -s ${workDir} | awk '{printf "%s", \$1}')
+        local used_space=\$(du -b -s ${workflow.workDir} | awk '{printf "%s", \$1}')
         local reserved_space=\$(get_reserved_space)
         echo \$((used_space + reserved_space))
     }
 
     wait_for_change() {
         if [ ${params.file_mode} == 'event' ]; then
-            inotifywait -r --exclude '/\\.' -e modify,delete ${workDir} | while read -r directory event filename; do
+            inotifywait -r --exclude '/\\.' -e modify,delete ${workflow.workDir} | while read -r directory event filename; do
                 break
             done
         else
@@ -152,8 +152,7 @@ process MAPPING {
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
-    // container '../images/bwa-mem.sif'
-    container '../images/bwa-samtools.sif'
+    container '../images/bwa-mem.sif'
     
     input:
     path mapping_databases  // Reference databases for mapping
@@ -178,7 +177,7 @@ process MAPPING {
         ${params.bwa} mem -t ${task.cpus} \${databases[i]}/\${file_names[i]} \$fastq_files > aln.sam
         echo "FILTER: Start filtering aligned sam file..."
         # samtools view -f 4 -h aln.sam > unmapped.sam
-        python3 ${projectDir}/templates/evaluate.py mapping aln.sam ${fastq} -o ${projectDir}/stats.csv --keep-files
+        python3 ${workflow.projectDir}/templates/evaluate.py mapping aln.sam ${fastq} -o ${workflow.projectDir}/stats.csv --keep-files
     done
     """
 }
@@ -216,7 +215,7 @@ process KRAKEN {
             kraken2 --threads ${task.cpus} --db \$database \$fastq_files --unclassified-out > results.txt
         fi
 
-        python3 ${projectDir}/templates/evaluate.py kraken results.txt ${fastq} -o ${projectDir}/stats.csv
+        python3 ${workflow.workflow.projectDir}/templates/evaluate.py kraken results.txt ${fastq} -o ${workflow.workflow.projectDir}/stats.csv
     done
     """
 }
@@ -247,7 +246,7 @@ process BLAST_X {
     for i in "\${!databases[@]}"; do
         for fastq_file in ${fastq}/*.fastq; do
             diamond blastx -d \${databases[i]}/\${file_names[i]} -q \$fastq_file --very-sensitive --outfmt 6 qseqid -p ${task.cpus} --out result.txt
-            python3 ${projectDir}/templates/evaluate.py blastx result.txt ${fastq} -o ${projectDir}/stats.csv
+            python3 ${workflow.workflow.projectDir}/templates/evaluate.py blastx result.txt ${fastq} -o ${workflow.workflow.projectDir}/stats.csv
         done
     done
     """
@@ -284,12 +283,12 @@ process BLAST_N {
     databases=(\$(echo ${blastn_database} | tr " " "\n"))
     file_names=(\$(echo "${db_names}" | sed "s/^\\[\\(.*\\)\\]\$/\\1/" | sed -e "s/, */,/g" | tr "," "\n"))
     for i in "\${!databases[@]}"; do
-        echo "Starting Basic Local Alignment Search Tool on ${projectDir}/refseq/\${databases[i]}/\${file_names[i]} database ..."
+        echo "Starting Basic Local Alignment Search Tool on ${workflow.projectDir}/refseq/\${databases[i]}/\${file_names[i]} database ..."
         for fastq_file in ${fastq}/*.fastq; do
             sed -n '1~4s/^@/>/p;2~4p' \$fastq_file > acc.fasta
-            blastn -db ${projectDir}/refseq/\${databases[i]}/\${file_names[i]} -outfmt "7 qseqid sseqid pident length evalue bitscore" -num_threads ${task.cpus} -query acc.fasta -out result.txt
+            blastn -db ${workflow.projectDir}/refseq/\${databases[i]}/\${file_names[i]} -outfmt "7 qseqid sseqid pident length evalue bitscore" -num_threads ${task.cpus} -query acc.fasta -out result.txt
             rm acc.fasta
-            python3 ${projectDir}/templates/evaluate.py blastn result.txt ${fastq} -o ${projectDir}/stats_test.csv
+            python3 ${workflow.projectDir} blastn result.txt ${fastq} -o ${workflow.projectDir}/stats_test.csv
         done
     done
     """
@@ -318,7 +317,7 @@ process COMPRESS_RESULTS {
     cpus 1
     memory '200 MB'
 
-    // publishDir params.output, mode: 'move'      // BUG: this just moves a broken symlink to the output folder
+    // publishDir params.output, mode: 'move'      // BUG: this just moves a symlink to the output folder. It's broken, because the original fastq files are being deleted 
     
     input:
     path fastq                                  // Path to the FASTQ files to be compressed
@@ -329,7 +328,7 @@ process COMPRESS_RESULTS {
     script:
     """
     tar --use-compress-program="pigz " -cf ${fastq}.tar.gz ${fastq}/*
-    cp ${fastq}.tar.gz ${fastq}/* ${projectDir}/${params.output}/
+    cp ${fastq}.tar.gz ${fastq}/* ${workflow.projectDir}/${params.output}/
     rm -r \$(readlink ${fastq})
     rm -r ${fastq}
     """
@@ -406,7 +405,7 @@ workflow {
 
 
     // setup
-    Channel
+    channel
         .fromPath(params.input_file)
         .splitCsv()
         .flatten()
