@@ -215,7 +215,7 @@ process KRAKEN {
             kraken2 --threads ${task.cpus} --db \$database \$fastq_files --unclassified-out > results.txt
         fi
 
-        python3 ${workflow.workflow.projectDir}/templates/evaluate.py kraken results.txt ${fastq} -o ${workflow.workflow.projectDir}/stats.csv
+        python3 ${workflow.projectDir}/templates/evaluate.py kraken results.txt ${fastq} -o ${workflow.projectDir}/stats.csv
     done
     """
 }
@@ -246,7 +246,7 @@ process BLAST_X {
     for i in "\${!databases[@]}"; do
         for fastq_file in ${fastq}/*.fastq; do
             diamond blastx -d \${databases[i]}/\${file_names[i]} -q \$fastq_file --very-sensitive --outfmt 6 qseqid -p ${task.cpus} --out result.txt
-            python3 ${workflow.workflow.projectDir}/templates/evaluate.py blastx result.txt ${fastq} -o ${workflow.workflow.projectDir}/stats.csv
+            python3 ${workflow.projectDir}/templates/evaluate.py blastx result.txt ${fastq} -o ${workflow.projectDir}/stats.csv
         done
     done
     """
