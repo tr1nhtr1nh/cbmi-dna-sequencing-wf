@@ -119,14 +119,11 @@ process FETCH_ACCESSION {
 }
 
 // convert fetched accession data into FASTQ format
-// (optional) How can I check already downloaded .sra files
+// update: create stats.csv to store evaluate.py outputs. reason: be able to skip tasks and still have that file
 process FASTERQ {
     maxForks 2
     cpus 1
     memory '1 GB'
-
-    publishDir params.output, mode: 'move' // need to pass fastq to output dir inside every process
-
 
     container 'file://../images/sra-tools.sif'
 
@@ -136,6 +133,7 @@ process FASTERQ {
 
     output:
     path "${accession}_fastq"   // generated FASTQ files from the accession
+    path "stats.csv"
 
     script:
     """
@@ -143,6 +141,7 @@ process FASTERQ {
     rm -r \$(readlink ${accession})
     rm -r ${accession}
     flock -x ${dl_com} echo 'C ${accession}' >> ${dl_com}
+    touch stats.csv
     """
 }
 
@@ -161,10 +160,12 @@ process MAPPING {
     path mapping_databases  // Reference databases for mapping
     val index_files         // Index files associated with the reference databases
     path fastq              // Path to the FASTQ files to be mapped
+    path stats
 
     output:
     path fastq              // Path to the modified FASTQ files
-    // path unmapped           // unmapped
+    path stats
+
 
     // Update: use samtools 
     // Alternative without samtools: awk '($2 & 4) != 0' input.sam > unmapped.sam
@@ -180,7 +181,7 @@ process MAPPING {
         ${params.bwa} mem -t ${task.cpus} \${databases[i]}/\${file_names[i]} \$fastq_files > aln.sam
         echo "FILTER: Start filtering aligned sam file..."
         # samtools view -f 4 -h aln.sam > unmapped.sam
-        python3 ${workflow.projectDir}/templates/evaluate.py mapping aln.sam ${fastq} -o ${workflow.projectDir}/stats.csv --keep-files
+        python3 ${workflow.projectDir}/templates/evaluate.py mapping aln.sam ${fastq} -o ${stats} --keep-files
     done
     """
 }
@@ -201,9 +202,11 @@ process KRAKEN {
     input:
     path kraken2_database   // Kraken2 database for classification
     path fastq              // Path to the FASTQ files for Kraken2 classification
+    path stats
 
     output:
     path fastq              // Path to the modified FASTQ files
+    path stats
 
     script:
     """
@@ -215,10 +218,10 @@ process KRAKEN {
         if [[ \$count -gt 1 ]]; then
             kraken2 --threads ${task.cpus} --db \$database --paired \$fastq_files > results.txt
         else
-            kraken2 --threads ${task.cpus} --db \$database \$fastq_files --unclassified-out > results.txt
+            kraken2 --threads ${task.cpus} --db \$database \$fastq_files > results.txt
         fi
 
-        python3 ${workflow.projectDir}/templates/evaluate.py kraken results.txt ${fastq} -o ${workflow.projectDir}/stats.csv
+        python3 ${workflow.projectDir}/templates/evaluate.py kraken results.txt ${fastq} -o ${stats}
     done
     """
 }
@@ -238,9 +241,11 @@ process BLAST_X {
     path blastx_database                // BLASTX database for similarity search (needs protein db as file, which is of type *.faa)
     val db_names                        // Names of the BLASTX database files
     path fastq                          // Path to the FASTQ files for BLASTX processing
+    path stats
 
     output:
     path fastq                          // Path to the modified FASTQ files
+    path stats
 
     script:
     """
@@ -249,7 +254,7 @@ process BLAST_X {
     for i in "\${!databases[@]}"; do
         for fastq_file in ${fastq}/*.fastq; do
             diamond blastx -d \${databases[i]}/\${file_names[i]} -q \$fastq_file --very-sensitive --outfmt 6 qseqid -p ${task.cpus} --out result.txt
-            python3 ${workflow.projectDir}/templates/evaluate.py blastx result.txt ${fastq} -o ${workflow.projectDir}/stats.csv
+            python3 ${workflow.projectDir}/templates/evaluate.py blastx result.txt ${fastq} -o ${stats}
         done
     done
     """
@@ -270,12 +275,14 @@ process BLAST_N {
     path blastn_database    // BLASTN database for similarity search
     val db_names            // Names of the BLASTN database files
     path fastq              // Path to the FASTQ files for BLASTN processing
+    path stats
 
     output:
     path fastq              // Path to the modified FASTQ files
+    path stats
 
     /*
-        Notice in line 325 (calling blastn -db): You're directory structure might look different. 
+        Notice in line calling blastn -db ... : You're directory structure might look different. 
         Make sure you're setting the correct path relative from the nextflow project directory to the blast databases.
         The project directory is the folder where the main *.nf Nextflow file resides.
     */
@@ -290,7 +297,7 @@ process BLAST_N {
             sed -n '1~4s/^@/>/p;2~4p' \$fastq_file > acc.fasta
             blastn -db ${workflow.projectDir}/refseq/\${databases[i]}/\${file_names[i]} -outfmt "7 qseqid sseqid pident length evalue bitscore" -num_threads ${task.cpus} -query acc.fasta -out result.txt
             rm acc.fasta
-            python3 ${workflow.projectDir} blastn result.txt ${fastq} -o ${workflow.projectDir}/stats_test.csv
+            python3 ${workflow.projectDir}/templates/evaluate.py blastn result.txt ${fastq} -o ${stats}
         done
     done
     """
@@ -301,25 +308,34 @@ process BLAST_N {
     process POSTREADSEEKER 
 */
 
+// Todo: use samtools to create bam files ?
+
 // compress the results into a tar.gz archive
 process COMPRESS_RESULTS {
     maxForks 1
     cpus 1
     memory '200 MB'
 
-    // publishDir params.output, mode: 'move'      // BUG: this just moves a symlink to the output folder. It's broken, because the original fastq files are being deleted 
+    // publishDir params.output, mode: 'copy'      // BUG: this just moves a symlink to the output folder. It's broken, because the original fastq files are being deleted 
+    
+    publishDir {
+        def name = fastq.getBaseName()
+        def match = (name =~ /(SRR\d+)/)
+        def accession = match ? match[0][1] : name
+        return "data/${accession}"
+    }, mode: 'move'
     
     input:
     path fastq                                  // Path to the FASTQ files to be compressed
+    path stats
 
     output:
     path "${fastq}.tar.gz"                      // A compressed tar.gz archive of the FASTQ files
+    path stats
 
     script:
     """
     tar --use-compress-program="pigz " -cf ${fastq}.tar.gz ${fastq}/*
-    cp ${fastq}.tar.gz ${fastq}/* ${workflow.projectDir}/${params.output}/
-    rm -r \$(readlink ${fastq})
     rm -r ${fastq}
     """
 }
@@ -346,7 +362,6 @@ def get_name(files) {
 
 // workflow definition
 workflow {
-
 
     if ( params.help ) {
         help = """pipeline.nf: This pipeline processes DNA sequencing data through a series of steps
@@ -380,7 +395,6 @@ workflow {
         exit(0)
     }
 
-
     log.info """\
             DNA-Sequencing-Workflow v${params.VERSION}
             ==========================
@@ -392,7 +406,6 @@ workflow {
             config files : ${workflow.configFiles}
             """
             .stripIndent()
-
 
     // setup
     channel
@@ -414,5 +427,4 @@ workflow {
     ch_blastx = params.skip_blastx ? ch_kraken : BLAST_X(get_parent_name(params.blastx_database), get_name(params.blastx_database), ch_kraken)
     ch_blastn = params.skip_blastn ? ch_blastx : BLAST_N(get_parent_name(params.blastn_database), get_name(params.blastn_database), ch_blastx)
     COMPRESS_RESULTS(ch_blastn)
-
 }
