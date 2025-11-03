@@ -49,4 +49,4 @@ test_*
 **/play.nf
 **/refseq/*
 *.fastq
-**/dups.py
+**/accessions.txt
