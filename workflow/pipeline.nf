@@ -273,7 +273,6 @@ process BLAST_N {
 
     output:
     path fastq              // Path to the modified FASTQ files
-    // path "blastn_results.txt"
 
     /*
         Notice in line 325 (calling blastn -db): You're directory structure might look different. 
@@ -297,18 +296,6 @@ process BLAST_N {
     """
 }
 
-// process PREREADSEEKER {
-//     input: 
-//     path fastq
-
-//     output: 
-//     path fastq
-
-//     script:
-//     """
-//     #python3 processing.py --pre fastq > fastq.sra
-//     """
-// }
 
 /*
     process POSTREADSEEKER 
@@ -426,16 +413,6 @@ workflow {
     ch_kraken = params.skip_kraken ? ch_mapping : KRAKEN(params.kraken2_database, ch_mapping)
     ch_blastx = params.skip_blastx ? ch_kraken : BLAST_X(get_parent_name(params.blastx_database), get_name(params.blastx_database), ch_kraken)
     ch_blastn = params.skip_blastn ? ch_blastx : BLAST_N(get_parent_name(params.blastn_database), get_name(params.blastn_database), ch_blastx)
-
-    // pre ReadSeeker script for 6mers 
-
-    // readSeeker
-
-    // post ReadSeeker processing script (Absprache mit Ben)
-
-    // last tool 
-
-    // compress and output results
-    COMPRESS_RESULTS(ch_readseeker)
+    COMPRESS_RESULTS(ch_blastn)
 
 }
