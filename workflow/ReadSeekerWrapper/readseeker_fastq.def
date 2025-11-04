@@ -1,0 +1,25 @@
+Bootstrap: docker
+
+From: python:3.10-slim
+
+
+
+%post
+    pip install transformers
+    pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
+    chmod +x /ReadSeeker/ReadSeeker_fastq.py
+    ln -s /ReadSeeker/ReadSeeker_fastq.py /usr/local/bin/readseeker
+    echo "print('DNA-BERT Container')\nfrom torch import cuda as tc\nx=tc.is_available()\nprint('Is cuda is_available:', x)\nif x:\n    print(tc.get_device_name())" > /testscript.py
+
+%files
+    ./Readseeker_fastq.py /ReadSeeker/ReadSeeker_fastq.py
+    ./__pycache__/* /ReadSeeker/__pycache__/
+    ./fastq_batch_loader.py /ReadSeeker/fastq_batch_loader.py
+    ./requirements.txt /ReadSeeker/requirements.txt
+
+%runscript
+
+    python /test/testscript.py
+
+%labels
+    Author Ben Wulf (HTW-Berlin)
