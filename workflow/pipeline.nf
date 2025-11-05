@@ -317,7 +317,7 @@ process READSEEKER {
     container "file://ReadSeekerWrapper/readseeker_fastq.sif"
 
     /*
-        Need to bind multiple dirs, because 
+        containerOptions: Need to bind multiple dirs, because 
         we have symlink to project dir on /data/ and 
         huggingface download stores data on /home/ dir...
     */
@@ -334,11 +334,9 @@ process READSEEKER {
 
     script:
     """
-
     for fastq_file in ${fastq}/*.fastq; do
         python3 ${workflow.projectDir}/ReadSeekerWrapper/Readseeker_fastq.py -q \$fastq_file -o predictions.txt
         python3 ${workflow.projectDir}/templates/evaluate.py readseeker predictions.txt --threshold ${params.readseeker.threshold} ${fastq} -o ${stats} --keep-files
-
     done
     """
 }
