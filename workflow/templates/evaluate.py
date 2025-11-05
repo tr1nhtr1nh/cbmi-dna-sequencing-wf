@@ -4,7 +4,7 @@ import os
 import re
 import csv
 
-ANALYSE_TYPE_CHOICES = ['mapping','kraken','blastn','blastx']
+ANALYSE_TYPE_CHOICES = ['mapping','kraken','blastn','blastx', 'readseeker']
 
 def removeReadsFromFastq(fastq_files, remove_lines):
     """
@@ -45,7 +45,6 @@ def evaluate(path, analyse_type, keep_files):
     """
     matched_lines = set()
     
-    # change to switch / case ?
     if args.type == 'kraken':
         analyse_function = evaluateKraken
     elif args.type == 'blastn':
@@ -54,6 +53,8 @@ def evaluate(path, analyse_type, keep_files):
         analyse_function = evaluateBlast
     elif args.type == 'mapping':
         analyse_function = evaluateMapping
+    elif args.type == 'readseeker':
+        analyse_function = evaluateReadseeker
     else:
         raise Exception('Unsupported type choice: ' + analyse_type)
     
@@ -120,6 +121,22 @@ def evaluateMapping(matched_lines, line):
             matched_lines.add(line_arr[0])
 
 
+def evaluateReadseeker(matched_line, line):
+    """
+    Evaluates the ReadSeeker model estimation value if a given read is inside cds or non-cds region.
+    
+    Parameters:
+    matched_lines (set): Set to which the matched sequence ids will be added.
+    line (str): A single line from a mapping output file.
+    threshold (float): If ReadSeeker model prediction is smaller than the given threshold then the line gets removed.
+    
+    Returns:
+    None
+    """
+    if float(line.split()[-1]) < args.threshold:
+        matched_line.add(re.split(r' ', line)[0].lstrip('@'))
+
+
 def getFastQFiles(fastq_dir):
     """
     Retrieves all FASTQ files from a specified directory.
@@ -176,6 +193,7 @@ if __name__ == "__main__":
     parser.add_argument('fastq_dir', type=str, help='Directory containing the fastq data to be trimmed.')
     parser.add_argument('-o', '--output', type=str, help='Name of the output file containing the removed indexes.')
     parser.add_argument('--keep-files', action="store_true", help='Keeps the analysis results input file.')
+    parser.add_argument('-t', '--threshold', type=float, help='Threshold for filtering CDS estimations from Readseeker model.')
     
     args = parser.parse_args()
     main(args)
