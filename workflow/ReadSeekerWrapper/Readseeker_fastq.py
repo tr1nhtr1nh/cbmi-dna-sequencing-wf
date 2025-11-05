@@ -13,7 +13,7 @@ def erprint(*msgs, flush=False):
         sys.stderr.flush()
 
 
-def predict(model, data, sm=torch.nn.Softmax(dim=1), use_gpu=False):            # default: use_gpu=True, pumpkin03 has no nvidia gpu support
+def predict(model, data, sm=torch.nn.Softmax(dim=1), use_gpu=False):    # default: use_gpu=True, pumpkin03 has no nvidia gpu support
     with torch.no_grad():
         if use_gpu:
             model_output = model(input_ids=data["input_ids"].cuda(), attention_mask=data["attention_mask"].cuda())[0]
