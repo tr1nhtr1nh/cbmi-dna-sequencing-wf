@@ -47,7 +47,7 @@ process FETCH_ACCESSION {
     cpus 1
     memory '200 MB'
 
-    errorStrategy task.exitStatus == 28 ? 'ignore' : 'terminate'
+    errorStrategy { task.exitStatus == 28 ? 'ignore' : 'terminate'}
     maxRetries 3
 
     container 'file://../images/sra-tools.sif'
@@ -149,9 +149,9 @@ process FASTERQ {
 process MAPPING {
     maxForks 1
     cpus params.cpu.mapping
-    memory params.mem.mapping * task.attempt
+    memory { params.mem.mapping * task.attempt }
 
-    errorStrategy task.exitStatus in 137..140 ? 'retry' : 'terminate' 
+    errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
     container 'file://../images/bwa-mem.sif'
@@ -192,9 +192,9 @@ process MAPPING {
 process KRAKEN {
     maxForks 1
     cpus params.cpu.kraken
-    memory params.mem.kraken * task.attempt
+    memory { params.mem.kraken * task.attempt }
 
-    errorStrategy task.exitStatus in 137..140 ? 'retry' : 'terminate'
+    errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
     container 'file://../images/kraken.sif'
@@ -264,9 +264,9 @@ process BLAST_X {
 process BLAST_N {
     maxForks 1
     cpus params.cpu.blastn
-    memory params.mem.blastn * task.attempt
+    memory { params.mem.blastn * task.attempt }
 
-    errorStrategy task.exitStatus in 137..140 ? 'retry' : 'terminate'
+    errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
     container 'file://../images/blast.sif'
