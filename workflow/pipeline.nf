@@ -336,10 +336,6 @@ process READSEEKER {
     """
 
     for fastq_file in ${fastq}/*.fastq; do
-        base=\$(basename \$fastq_file)
-        name=\${base%%.*}
-        #echo \$name
-
         python3 ${workflow.projectDir}/ReadSeekerWrapper/Readseeker_fastq.py -q \$fastq_file -o predictions.txt
         python3 ${workflow.projectDir}/templates/evaluate.py readseeker predictions.txt --threshold ${params.readseeker.threshold} ${fastq} -o ${stats} --keep-files
 
