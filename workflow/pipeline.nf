@@ -304,9 +304,50 @@ process BLAST_N {
 }
 
 
-/*
-    process POSTREADSEEKER 
-*/
+
+process READSEEKER {
+
+    maxForks 1
+    cpus params.cpu.kraken
+    memory params.mem.kraken * task.attempt
+
+    errorStrategy task.exitStatus in 137..140 ? 'retry' : 'terminate'
+    maxRetries 3
+
+    container "file://ReadSeekerWrapper/readseeker_fastq.sif"
+
+    /*
+        Need to bind multiple dirs, because 
+        we have symlink to project dir on /data/ and 
+        huggingface download stores data on /home/ dir...
+    */
+
+    containerOptions '-B /data/,/home/:/home'
+
+    input:
+    path fastq
+    path stats
+
+    output:
+    path fastq
+    path stats
+
+    script:
+    """
+
+    for fastq_file in ${fastq}/*.fastq; do
+        base=\$(basename \$fastq_file)
+        name=\${base%%.*}
+        #echo \$name
+
+        python3 ${workflow.projectDir}/ReadSeekerWrapper/Readseeker_fastq.py -q \$fastq_file -o predictions.txt
+        python3 ${workflow.projectDir}/templates/evaluate.py readseeker predictions.txt --threshold ${params.readseeker.threshold} ${fastq} -o ${stats} --keep-files
+
+    done
+    """
+}
+
+
 
 // Todo: use samtools to create bam files ?
 
