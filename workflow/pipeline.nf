@@ -230,9 +230,9 @@ process KRAKEN {
 process BLAST_X {
     maxForks 1
     cpus params.cpu.blastx
-    memory params.mem.blastx * task.attempt
+    memory { params.mem.blastx * task.attempt }
 
-    errorStrategy task.exitStatus in 137..140 ? 'retry' : 'terminate'
+    errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
     container 'file://../images/diamond.sif'
