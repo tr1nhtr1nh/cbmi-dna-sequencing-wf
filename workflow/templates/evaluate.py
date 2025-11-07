@@ -121,7 +121,7 @@ def evaluateMapping(matched_lines, line):
             matched_lines.add(line_arr[0])
 
 
-def evaluateReadseeker(matched_line, line):
+def evaluateReadseeker(matched_lines, line):
     """
     Evaluates the ReadSeeker model estimation value if a given read is inside cds or non-cds region.
     
@@ -134,7 +134,7 @@ def evaluateReadseeker(matched_line, line):
     None
     """
     if float(line.split()[-1]) < args.threshold:
-        matched_line.add(re.split(r' ', line)[0].lstrip('@'))
+        matched_lines.add(re.split(r' ', line)[0].lstrip('@'))
 
 
 def getFastQFiles(fastq_dir):
@@ -191,9 +191,9 @@ if __name__ == "__main__":
     parser.add_argument('type', choices=ANALYSE_TYPE_CHOICES, help='Program with which the analysis was performed.')
     parser.add_argument('analysis_results', type=str, help='Directory or File containing the analysis results that should be evaluated.')
     parser.add_argument('fastq_dir', type=str, help='Directory containing the fastq data to be trimmed.')
+    parser.add_argument('-t', '--threshold', dest="threshold", type=float, help='Threshold for filtering CDS estimations from Readseeker model.')
     parser.add_argument('-o', '--output', type=str, help='Name of the output file containing the removed indexes.')
     parser.add_argument('--keep-files', action="store_true", help='Keeps the analysis results input file.')
-    parser.add_argument('-t', '--threshold', type=float, help='Threshold for filtering CDS estimations from Readseeker model.')
     
     args = parser.parse_args()
     main(args)
