@@ -15,13 +15,13 @@
       system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; config.allowUnfree = true; };
 
+      # Add python env for TaxonomicClassification debugging
       torchnlp = pkgs.python312Packages.buildPythonPackage rec {
         pname = "pytorch-nlp";
         version = "0.5.0";
         format = "setuptools";
         src = pkgs.fetchPypi {
           inherit pname version;
-          # <-- dein "got:"-Hash aus der Fehlermeldung
           sha256 = "sha256-q6euy8bwlS7d6LwGc5TI1Dt0o1xZSdYQZmbQGmTZz6s=";
         };
         nativeBuildInputs = with pkgs.python312Packages; [ setuptools ];
