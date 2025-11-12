@@ -51,7 +51,10 @@
           pkgs.docker
           pythonEnv
         ];
+
+        shellHook = ''
+          echo "Welcome to the development shell for the ngs pipeline project!"
+        '';
       };
     };
 }
-
