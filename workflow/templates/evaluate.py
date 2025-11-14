@@ -37,7 +37,7 @@ def evaluate(path, analyse_type, keep_files):
 
     Parameters:
     path (str): Path to a directory or a single file containing analysis results.
-    analyse_type (str): Type of analysis (e.g., 'kraken', 'blastn', 'blastx', 'mapping').
+    analyse_type (str): Type of analysis (e.g., 'kraken', 'blastn', 'blastx', 'mapping', 'readseeker').
     keep_files (bool): Whether to keep or delete the analysis files after processing.
 
     Returns:
@@ -127,8 +127,8 @@ def evaluateReadseeker(matched_lines, line):
     
     Parameters:
     matched_lines (set): Set to which the matched sequence ids will be added.
-    line (str): A single line from a mapping output file.
-    threshold (float): If ReadSeeker model prediction is smaller than the given threshold then the line gets removed.
+    line (str): A single line from a ReadSeeker predictions file.
+    threshold (float): If ReadSeeker model prediction is less than the given threshold then the line gets removed.
     
     Returns:
     None
