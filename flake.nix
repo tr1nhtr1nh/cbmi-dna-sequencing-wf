@@ -40,16 +40,17 @@
         torchvision
         torchaudio
         torchnlp
+        tables
       ]);
     in {
       devShells.${system}.default = pkgs.mkShell {
         buildInputs = [
           pkgs.git
           pkgs.nextflow
+          # pkgs.nf-test
           pkgs.singularity
           pkgs.pigz
-          pkgs.docker
-          pythonEnv
+          pythonEnv     # development for Taxonomic NGS NN
         ];
 
         shellHook = ''
