@@ -181,7 +181,11 @@ def main(args):
     if args.output:
         writeOutputCSV(args.output, matched_acc, args.type)
     
-
+def restricted_float(x):
+    x = float(x)
+    if x < 0.0 or x > 1.0:
+        raise argparse.ArgumentTypeError(f"{x} not in range [0.0, 1.0]")
+    return x
 
 if __name__ == "__main__":
     import argparse
@@ -191,7 +195,7 @@ if __name__ == "__main__":
     parser.add_argument('type', choices=ANALYSE_TYPE_CHOICES, help='Program with which the analysis was performed.')
     parser.add_argument('analysis_results', type=str, help='Directory or File containing the analysis results that should be evaluated.')
     parser.add_argument('fastq_dir', type=str, help='Directory containing the fastq data to be trimmed.')
-    parser.add_argument('-t', '--threshold', dest="threshold", type=float, help='Threshold for filtering CDS estimations from Readseeker model.')
+    parser.add_argument('-t', '--threshold', dest="threshold", type=restricted_float, help='Float threshold for filtering CDS estimations from Readseeker model [0.0, 1.0].')
     parser.add_argument('-o', '--output', type=str, help='Name of the output file containing the removed indexes.')
     parser.add_argument('--keep-files', action="store_true", help='Keeps the analysis results input file.')
     
