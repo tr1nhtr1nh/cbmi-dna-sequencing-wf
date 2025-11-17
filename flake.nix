@@ -25,7 +25,7 @@
           sha256 = "sha256-q6euy8bwlS7d6LwGc5TI1Dt0o1xZSdYQZmbQGmTZz6s=";
         };
         nativeBuildInputs = with pkgs.python312Packages; [ setuptools ];
-        propagatedBuildInputs = with pkgs.python312Packages; [ pytorch ];
+        propagatedBuildInputs = with pkgs.python312Packages; [ torch ];
         doCheck = false;
       };
 
@@ -33,10 +33,10 @@
         numpy
         pandas
         seaborn
-        scikitlearn
+        scikit-learn
         biopython
         transformers
-        pytorch
+        torch
         torchvision
         torchaudio
         torchnlp
