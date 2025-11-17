@@ -1,9 +1,10 @@
+import argparse
 import os
 
-def fasta2fastq(fastq_path: str, fasta_path: str, output_path: None, batch_size=1000):
+def fasta2fastq(fastq_path: str, fasta_path: str, output_path: None, batch_size):
     """
     This function converts the taxonomic classification (cls) output from FASTA back to FASTQ to keep quality scores. 
-    Idea is to replace the header in FASTQ file from cls output.
+    It replaces the meta (@) and comment (+) lines in FASTQ file from cls output.
     
     Params:
     fasta_path (str): (Set of) filepath to fasta file // Wollen wir einen Ordner übergeben oder eine einzelne Datei? 
@@ -46,3 +47,18 @@ def fasta2fastq(fastq_path: str, fasta_path: str, output_path: None, batch_size=
                 
                 new_plus = "+" + new_header[1:]
                 out.write(f"{new_header}\n{seq}{new_plus}\n{qual}")
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        prog="Fasta2fastq converter",
+        description="This utility program converts the FASTQ Taxonomic Classification NGS NN output file back to FASTQ format."
+    )
+
+    parser.add_argument('-a', '--fasta', type=str, help="Filepath to input FASTA files.", required=True)
+    parser.add_argument('-q', '--fastq', type=str, help="Filepath to input FASTQ files.", required=True)
+    parser.add_argument('-o', '--output', type=str, help="Filepath to created FASTQ files. An additional directory path can be specified.", required=True)
+    parser.add_argument('-bs', '--batchsize', type=int, help="Integer number of processed entries per batch (default=1024). ", default=1024)
+
+if __name__ == "__main__":
+    main()
