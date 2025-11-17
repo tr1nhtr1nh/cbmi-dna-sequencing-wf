@@ -4,7 +4,7 @@ import os
 import re
 import csv
 
-ANALYSE_TYPE_CHOICES = ['mapping','kraken','blastn','blastx', 'readseeker']
+ANALYSE_TYPE_CHOICES = ['mapping','kraken','blastx', 'blastn', 'readseeker']
 
 def removeReadsFromFastq(fastq_files, remove_lines):
     """
