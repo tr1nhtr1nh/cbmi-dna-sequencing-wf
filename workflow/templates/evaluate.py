@@ -128,7 +128,7 @@ def evaluateReadseeker(matched_lines, line):
     Parameters:
     matched_lines (set): Set to which the matched sequence ids will be added.
     line (str): A single line from a ReadSeeker predictions file.
-    threshold (float): If ReadSeeker model prediction is less than the given threshold then the line gets removed.
+    threshold (float): If ReadSeeker model prediction is smaller than the given threshold then the line gets removed.
     
     Returns:
     None
@@ -160,7 +160,7 @@ def writeOutputCSV(output_file, matched_acc, analyse_type):
     Parameters:
     output_file (str): Path to the output CSV file.
     matched_acc (set of str): Set of matched accession lines to write to the file.
-    analyse_type (str): Type of analysis (e.g., 'kraken', 'blastn', 'blastx', 'mapping').
+    analyse_type (str): Type of analysis (e.g., 'kraken', 'blastn', 'blastx', 'mapping', 'readseeker').
 
     Returns:
     None
