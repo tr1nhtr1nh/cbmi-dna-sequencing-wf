@@ -172,11 +172,44 @@ def writeOutputCSV(output_file, matched_acc, analyse_type):
         for acc in matched_acc:
             writer.writerow([acc, typeNumber])
 
+def countFilteredSequences(analyse_type, fastq_files, removed_lines):
+    #TODO: finish docstring
+    """
+    Docstring for countRemovedSeq
+    Beachte: jede result.txt pro read wird für beide fastq entfernt, d.h. die doppelte menge wird entfernt. 
+    in removed werden die seq für R1 und R2 zusammengefasst, weil results aus einer FASTQ in beiden entfernt werden.
+    
+    Params:
+    analyse_type (str): Filtering tool
+    fastq_dir (str): Directory to fastq files. This function will count R1 and R2
+    matched_acc (set): Set of strings containing removed lines
+    
+    Returns:
+    None
+    """
+    print(fastq_files)
+    
+    i = 0
+    for fastq_file in fastq_files:
+        with open(fastq_file, 'r') as f:
+            lines = f.readlines()
+            i += len(lines) // 4
+
+    with open("seqcount.csv", "a+", newline="") as csvfile:
+        csvfile.seek(0)
+        first_char = csvfile.read(1)
+        csvfile.seek(0, 2)
+        writer = csv.writer(csvfile)
+        if not first_char:
+            writer.writerow(["tool", "total", "removed", "left"])
+        writer.writerow([analyse_type, i, 2*len(removed_lines), i - 2*len(removed_lines)])
 
 def main(args):
     fastq_files = getFastQFiles(args.fastq_dir)
     matched_acc = evaluate(args.analysis_results, args.type, args.keep_files)
     
+    if(args.count_seq):
+        countFilteredSequences(args.type, fastq_files, matched_acc)
     removeReadsFromFastq(fastq_files, matched_acc)
     
     if args.output:
@@ -199,6 +232,7 @@ if __name__ == "__main__":
     parser.add_argument('-t', '--threshold', dest="threshold", type=restricted_float, help='Float threshold for filtering CDS estimations from Readseeker model [0.0, 1.0].')
     parser.add_argument('-o', '--output', type=str, help='Name of the output file containing the removed indexes.')
     parser.add_argument('--keep-files', action="store_true", help='Keeps the analysis results input file.')
+    parser.add_argument('--count-seq', action="store_true", help="Counts how many sequence ids are removed form each tool. R1 and R2 are individually. Outputs to CSV")
     
     args = parser.parse_args()
     main(args)
