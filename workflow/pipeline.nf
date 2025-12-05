@@ -8,6 +8,9 @@ process CREATE_DL_COM {
     cpus 1
     memory '200 MB'
 
+    container 'file://../images/blast.sif'
+    shell '/usr/bin/bash'
+
     output:
     path ".dlCom.pipe"
 
@@ -28,6 +31,8 @@ process FETCH_ACCESSION_INFO {
     maxRetries 3
     
     container 'file://../images/sra-tools.sif'
+    shell '/bin/bash'
+
 
     input:
     val accession   // accession ID for which information is to be fetched
@@ -54,6 +59,8 @@ process FETCH_ACCESSION {
     maxRetries 3
 
     container 'file://../images/sra-tools.sif'
+    shell '/bin/bash'
+
 
     input:
     val accession   // accession ID to be fetched
@@ -130,6 +137,8 @@ process FASTERQ {
     memory '1 GB'
 
     container 'file://../images/sra-tools.sif'
+    shell '/bin/bash'
+
 
     input:
     path accession              // fetched accession file
@@ -160,6 +169,7 @@ process MAPPING {
     maxRetries 3
 
     container 'file://../images/bwa-mem.sif'
+    shell '/bin/bash'
     
     input:
     path mapping_databases  // Reference databases for mapping
@@ -204,6 +214,7 @@ process KRAKEN {
     maxRetries 3
 
     container 'file://../images/kraken.sif'
+    shell '/bin/bash'
     
     input:
     path kraken2_database   // Kraken2 database for classification
@@ -243,6 +254,7 @@ process BLAST_X {
     maxRetries 3
 
     container 'file://../images/diamond.sif'
+    shell '/bin/bash'
 
     input:
     path blastx_database                // BLASTX database for similarity search (needs protein db as file, which is of type *.faa)
@@ -278,6 +290,7 @@ process BLAST_N {
     maxRetries 3
 
     container 'file://../images/blast.sif'
+    shell '/bin/bash'
     
     input:
     path blastn_database    // BLASTN database for similarity search
@@ -323,6 +336,7 @@ process READSEEKER {
     maxRetries 3
 
     container "file://ReadSeekerWrapper/readseeker_fastq.sif"
+    shell '/usr/bin/bash'
 
     /*
         containerOptions: Need to bind multiple dirs, because 
@@ -359,6 +373,9 @@ process COMPRESS_RESULTS {
     maxForks 1
     cpus 1
     memory '200 MB'
+
+    container 'file://../images/blast.sif'
+    shell '/usr/bin/bash'
 
     // publishDir params.output, mode: 'copy'      // BUG: this just moves a symlink to the output folder. It's broken, because the original fastq files are being deleted 
     
