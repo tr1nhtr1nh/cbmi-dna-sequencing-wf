@@ -5,6 +5,8 @@ From: python:3.10-slim
 
 
 %post
+    apt-get update
+    apt-get install -y procps
     pip install transformers
     pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
     chmod +x /ReadSeeker/ReadSeeker_fastq.py
