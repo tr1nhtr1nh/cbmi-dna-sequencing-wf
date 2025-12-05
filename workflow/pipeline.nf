@@ -4,6 +4,7 @@ params.VERSION = '1.0.0'
 
 // create a pipe for download communication
 process CREATE_DL_COM {
+    tag 'CREATE_DL_COM'
     cpus 1
     memory '200 MB'
 
@@ -19,6 +20,7 @@ process CREATE_DL_COM {
 
 // fetch accession information and estimate its size
 process FETCH_ACCESSION_INFO {
+    tag "$accession"
     maxForks 1
     cpus 1
     memory '200 MB'
@@ -43,6 +45,7 @@ process FETCH_ACCESSION_INFO {
 
 // fetch an accession, ensuring disk space is managed correctly
 process FETCH_ACCESSION {
+    tag "$accession"
     maxForks 1
     cpus 1
     memory '200 MB'
@@ -121,6 +124,7 @@ process FETCH_ACCESSION {
 // convert fetched accession data into FASTQ format
 // update: create stats.csv to store evaluate.py outputs. reason: be able to skip tasks and still have that file
 process FASTERQ {
+    tag "$accession"
     maxForks 2
     cpus 1
     memory '1 GB'
@@ -147,6 +151,7 @@ process FASTERQ {
 
 // map FASTQ files against a reference database using BWA-MEM2
 process MAPPING {
+    tag "${fastq.baseName.replace('_fastq','')}"
     maxForks 1
     cpus params.cpu.mapping
     memory { params.mem.mapping * task.attempt }
@@ -190,6 +195,7 @@ process MAPPING {
 // Discuss which data format is needed
 // Add filtering options: kraken2 --threads ${task.cpus} --db \$database --paired --unclassified-out \$fastq_files  > results.txt 
 process KRAKEN {
+    tag "${fastq.baseName.replace('_fastq','')}"
     maxForks 1
     cpus params.cpu.kraken
     memory { params.mem.kraken * task.attempt }
@@ -228,6 +234,7 @@ process KRAKEN {
 
 // run BLASTX on FASTQ files for protein sequence similarity search
 process BLAST_X {
+    tag "${fastq.baseName.replace('_fastq','')}"
     maxForks 1
     cpus params.cpu.blastx
     memory { params.mem.blastx * task.attempt }
@@ -262,6 +269,7 @@ process BLAST_X {
 
 // run BLASTN on FASTQ files for nucleotide sequence similarity search
 process BLAST_N {
+    tag "${fastq.baseName.replace('_fastq','')}"
     maxForks 1
     cpus params.cpu.blastn
     memory { params.mem.blastn * task.attempt }
@@ -306,7 +314,7 @@ process BLAST_N {
 
 
 process READSEEKER {
-
+    tag "${fastq.baseName.replace('_fastq','')}"
     maxForks 1
     cpus params.cpu.kraken
     memory params.mem.kraken * task.attempt
@@ -347,6 +355,7 @@ process READSEEKER {
 
 // compress the results into a tar.gz archive
 process COMPRESS_RESULTS {
+    tag "${fastq.baseName.replace('_fastq','')}"
     maxForks 1
     cpus 1
     memory '200 MB'
