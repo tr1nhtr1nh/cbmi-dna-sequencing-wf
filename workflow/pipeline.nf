@@ -396,7 +396,7 @@ process COMPRESS_RESULTS {
 
     script:
     """
-    tar --use-compress-program="pigz " -cf ${fastq}.tar.gz ${fastq}/*
+    tar --use-compress-program="pigz" -cf ${fastq}.tar.gz ${fastq}/*
     rm -r ${fastq}
     """
 }
