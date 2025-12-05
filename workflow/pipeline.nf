@@ -357,8 +357,8 @@ process READSEEKER {
     script:
     """
     for fastq_file in ${fastq}/*.fastq; do
-        python3 ${workflow.projectDir}/ReadSeekerWrapper/Readseeker_fastq.py -q \$fastq_file -o predictions.txt
-        python3 ${workflow.projectDir}/templates/evaluate.py readseeker predictions.txt --threshold ${params.readseeker.threshold} ${fastq} -o ${stats} --keep-files
+        python3 ${workflow.projectDir}/ReadSeekerWrapper/Readseeker_fastq.py -q \$fastq_file -o preds.txt        
+        python3 ${workflow.projectDir}/templates/evaluate.py readseeker preds.txt ${fastq} -t ${params.readseeker.threshold} -o ${stats} --keep-files
     done
     """
 }
