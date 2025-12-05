@@ -332,7 +332,7 @@ process READSEEKER {
     cpus params.cpu.readseeker
     memory { params.mem.readseeker * task.attempt }
 
-    errorStrategy task.exitStatus in 137..140 ? 'retry' : 'terminate'
+    errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
     container "file://ReadSeekerWrapper/readseeker_fastq.sif"
