@@ -316,8 +316,8 @@ process BLAST_N {
 process READSEEKER {
     tag "${fastq.baseName.replace('_fastq','')}"
     maxForks 1
-    cpus params.cpu.kraken
-    memory params.mem.kraken * task.attempt
+    cpus params.cpu.readseeker
+    memory { params.mem.readseeker * task.attempt }
 
     errorStrategy task.exitStatus in 137..140 ? 'retry' : 'terminate'
     maxRetries 3
