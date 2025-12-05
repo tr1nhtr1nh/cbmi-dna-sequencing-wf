@@ -261,7 +261,7 @@ process BLAST_X {
     for i in "\${!databases[@]}"; do
         for fastq_file in ${fastq}/*.fastq; do
             diamond blastx -d \${databases[i]}/\${file_names[i]} -q \$fastq_file --very-sensitive --outfmt 6 qseqid -p ${task.cpus} --out result.txt
-            python3 ${workflow.projectDir}/templates/evaluate.py blastx result.txt ${fastq} -o ${stats}
+            python3 ${workflow.projectDir}/templates/evaluate.py blastx result.txt ${fastq} -o ${stats} --keep-files
         done
     done
     """
