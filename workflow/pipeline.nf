@@ -487,5 +487,7 @@ workflow {
     ch_kraken = params.skip_kraken ? ch_mapping : KRAKEN(params.kraken2_database, ch_mapping)
     ch_blastx = params.skip_blastx ? ch_kraken : BLAST_X(get_parent_name(params.blastx_database), get_name(params.blastx_database), ch_kraken)
     ch_blastn = params.skip_blastn ? ch_blastx : BLAST_N(get_parent_name(params.blastn_database), get_name(params.blastn_database), ch_blastx)
-    COMPRESS_RESULTS(ch_blastn)
+    ch_readseeker = params.skip_readseeker ? ch_blastn : READSEEKER(ch_blastx)
+    ch_nn = params.skip_nn ? ch_blastn : NN_CLASSIFIER(ch_readseeker)
+    COMPRESS_RESULTS(ch_nn)
 }
