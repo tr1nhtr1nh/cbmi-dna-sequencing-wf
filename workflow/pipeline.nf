@@ -122,7 +122,7 @@ process FETCH_ACCESSION {
 }
 
 // convert fetched accession data into FASTQ format
-// update: create stats.csv to store evaluate.py outputs. reason: be able to skip tasks and still have that file
+// update: create stats.csv to store evaluate.py results
 process FASTERQ {
     tag "$accession"
     maxForks 2
@@ -290,7 +290,7 @@ process BLAST_N {
     path stats
 
     /*
-        Notice in line calling blastn -db ... : You're directory structure might look different. 
+        Info in line calling blastn -db ... : You're directory structure might look different. 
         Make sure you're setting the correct path relative from the nextflow project directory to the blast databases.
         The project directory is the folder where the main *.nf Nextflow file resides.
     */
