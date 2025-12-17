@@ -279,6 +279,22 @@ process BLAST_X {
     """
 }
 
+process CHUNKING {
+    // debug true
+
+    input:
+    path fastq
+
+    output:
+    path "chunks/*"
+
+    script:
+    """
+    echo "Chunking ${fastq} directory..."
+    python3 ${workflow.projectDir}/templates/chunking.py --input_folder ${fastq} --output_folder ./ --reads_per_chunk ${params.reads_per_chunk}
+    """
+}
+
 // run BLASTN on FASTQ files for nucleotide sequence similarity search
 process BLAST_N {
     tag "${fastq.baseName.replace('_fastq','')}"
