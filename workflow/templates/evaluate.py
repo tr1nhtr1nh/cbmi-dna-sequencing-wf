@@ -100,8 +100,7 @@ def evaluateBlast(matched_lines, line):
     Returns:
     None
     """
-    if not line.startswith('#'):
-        matched_lines.add(re.split(r'\t+', line)[0].strip("\n"))
+    matched_lines.add(re.split(r'\t+', line)[0].strip("\n"))
 
 
 def evaluateMapping(matched_lines, line):

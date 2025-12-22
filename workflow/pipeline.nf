@@ -332,7 +332,7 @@ process BLAST_N {
         echo "Starting Basic Local Alignment Search Tool on ${workflow.projectDir}/refseq/\${databases[i]}/\${file_names[i]} database ..."
         for fastq_file in ${fastq}/*.fastq; do
             sed -n '1~4s/^@/>/p;2~4p' \$fastq_file > acc.fasta
-            blastn -db ${workflow.projectDir}/refseq/\${databases[i]}/\${file_names[i]} -outfmt "7 qseqid sseqid pident length evalue bitscore" -num_threads ${task.cpus} -query acc.fasta -out result.txt
+            blastn -db ${workflow.projectDir}/refseq/\${databases[i]}/\${file_names[i]} -outfmt "6 qseqid sseqid pident length evalue bitscore" -num_threads ${task.cpus} -query acc.fasta -out result.txt
             #rm acc.fasta
             python3 ${workflow.projectDir}/templates/evaluate.py blastn result.txt ${fastq} -o ${stats} --keep-files
         done
