@@ -24,7 +24,7 @@ process CREATE_DL_COM {
 // fetch accession information and estimate its size
 process FETCH_ACCESSION_INFO {
     tag "$accession"
-    maxForks 1
+    // maxForks 1
     cpus 1
     memory '200 MB'
 
@@ -51,7 +51,7 @@ process FETCH_ACCESSION_INFO {
 // fetch an accession, ensuring disk space is managed correctly
 process FETCH_ACCESSION {
     tag "$accession"
-    maxForks 1
+    // maxForks 1
     cpus 1
     memory '200 MB'
 
@@ -339,9 +339,6 @@ process BLAST_N {
     done
     """
 }
-
-
-
 process READSEEKER {
     tag "${fastq.baseName.replace('_fastq','')}"
     maxForks 1
