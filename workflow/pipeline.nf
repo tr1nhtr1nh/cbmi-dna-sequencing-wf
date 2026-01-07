@@ -238,7 +238,7 @@ process KRAKEN {
             kraken2 --threads ${task.cpus} --db \$database \$fastq_files > results.txt
         fi
 
-        python3 ${workflow.projectDir}/templates/evaluate.py kraken results.txt ${fastq} -o ${stats}
+        python3 ${workflow.projectDir}/templates/evaluate.py kraken results.txt ${fastq} -o ${stats} --keep-files
     done
     """
 }
