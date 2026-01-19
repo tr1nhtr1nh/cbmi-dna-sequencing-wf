@@ -584,9 +584,15 @@ workflow {
             input from   : ${params.input_file}
             output to    : ${params.output}
             --
-            run as       : ${workflow.commandLine}
-            started at   : ${workflow.start}
-            config files : ${workflow.configFiles}
+            run as          : ${workflow.commandLine}
+            started at      : ${workflow.start}
+            config files    : ${workflow.configFiles}
+            ---
+            used databases
+            bwa             : ${params.mapping_database.collect { db -> new File(db).getName() }.join(', ')}
+            kraken          : ${params.kraken2_database.collect { db -> new File(db).getName() }.join(', ')}
+            diamond         : ${params.blastx_database.collect { db -> new File(db).getName() }.join(', ')}
+            blastn          : ${params.blastn_database.collect { db -> new File(db).getName() }.join(', ')}
             """
             .stripIndent()
 
