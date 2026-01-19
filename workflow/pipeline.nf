@@ -476,8 +476,49 @@ process READSEEKER {
     script:
     """
     for fastq_file in ${fastq}/*.fastq; do
-        python3 ${workflow.projectDir}/ReadSeekerWrapper/Readseeker_fastq.py -q \$fastq_file -o preds.txt        
-        python3 ${workflow.projectDir}/templates/evaluate.py readseeker preds.txt ${fastq} -t ${params.readseeker.threshold} -o ${stats} --keep-files
+        readseeker_fastq -q \$fastq_file -o preds.txt
+        evaluate readseeker preds.txt ${fastq} -t ${params.readseeker.threshold} -o ${stats} --keep-files
+    done
+    echo "readseeker, \$(( \$(wc -l < ${fastq}/*_1.fastq) / 4 ))" >> ${readcount}
+    """
+}
+
+// readseeker removes linecount - 2 (unsure)
+
+process NN_CLASSIFIER {
+    tag "${fastq.baseName.replace('_fastq','')}"
+    maxForks 2 // not all cpus are used: for one job around 30 cpus are occupied => a second job fits in ... 
+    cpus params.cpu.nn_cls
+    memory params.mem.nn_cls 
+
+    errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
+    maxRetries 3
+    
+
+    container "file://${workflow.projectDir}/../images/nn.sif"
+    containerOptions "-B /data/,/home/:/home/"
+    shell "/usr/bin/bash"
+
+    input:
+    path fastq
+    path stats
+    path readcount
+
+    output:
+    path fastq
+    path stats
+    path readcount
+
+    script:
+    """
+    set -euo pipefail
+
+    for fastq_file in ${fastq}/*.fastq; do
+        filename=\$(basename \$fastq_file)
+        filename=\${filename%%.*}
+        sed -n '1~4s/^@/>/p;2~4p' \$fastq_file > \$filename.fasta
+        classification --input \$filename.fasta --cpu --verbose
+        evaluate-nn nn results/result_dataframe.h5 ${fastq} -o ${stats} --keep-files 
     done
     """
 }
