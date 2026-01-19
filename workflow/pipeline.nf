@@ -275,7 +275,7 @@ process MAPPING {
     shell '/bin/bash'
     
     input:
-    path mapping_databases  // Reference databases for mapping
+    val mapping_databases  // Reference databases for mapping
     val index_files         // Index files associated with the reference databases
     path fastq              // Path to the FASTQ files to be mapped
     path stats
@@ -324,7 +324,7 @@ process KRAKEN {
     shell '/bin/bash'
     
     input:
-    path kraken2_database   // Kraken2 database for classification
+    val kraken2_database   // Kraken2 database for classification
     path fastq              // Path to the FASTQ files for Kraken2 classification
     path stats
     path readcount
@@ -367,9 +367,9 @@ process BLAST_X {
     shell '/bin/bash'
 
     input:
-    path blastx_database                // BLASTX database for similarity search (needs protein db as file, which is of type *.faa)
-    val db_names                        // Names of the BLASTX database files
-    path fastq                          // Path to the FASTQ files for BLASTX processing
+    val blastx_database
+    val db_names
+    path fastq
     path stats
     path readcount
 
@@ -407,9 +407,9 @@ process BLAST_N {
     shell '/bin/bash'
     
     input:
-    path blastn_database    // BLASTN database for similarity search
-    val db_names            // Names of the BLASTN database files
-    path fastq              // Path to the FASTQ files for BLASTN processing
+    val blastn_database
+    val db_names
+    path fastq
     path stats
     path readcount
     val mutex               // Mutex
