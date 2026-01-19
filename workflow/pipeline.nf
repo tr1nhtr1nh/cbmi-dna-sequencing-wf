@@ -50,7 +50,6 @@ process FETCH_ACCESSION_INFO {
 
 process WATCH_STORAGE {
     tag "$accession"
-    // maxForks 1
     cpus 1
     memory '200 MB'
 
@@ -490,7 +489,6 @@ process READSEEKER {
 // compress the results into a tar.gz archive
 process COMPRESS_RESULTS {
     tag "${fastq.baseName.replace('_fastq','')}"
-    maxForks 1
     cpus 1
     memory '200 MB'
     cache false
