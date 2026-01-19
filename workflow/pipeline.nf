@@ -217,6 +217,7 @@ process FASTERQ {
     fastq="${accession}_fastq"
     ${params.fasterq_dump} ${accession} -O \$fastq
     touch stats.csv
+    echo "raw, \$(( \$(wc -l < \$fastq/*_1.fastq) / 4))" > readscount.csv
     """
 }
 
@@ -304,6 +305,7 @@ process MAPPING {
         # samtools view -f 4 -h aln.sam > unmapped.sam
         python3 ${workflow.projectDir}/templates/evaluate.py mapping aln.sam ${fastq} -o ${stats} --keep-files
     done
+    echo "mapping, \$(( \$(wc -l < ${fastq}/*_1.fastq) / 4 ))" >> ${readcount}
     """
 }
 
@@ -326,10 +328,12 @@ process KRAKEN {
     path kraken2_database   // Kraken2 database for classification
     path fastq              // Path to the FASTQ files for Kraken2 classification
     path stats
+    path readcount
 
     output:
     path fastq              // Path to the modified FASTQ files
     path stats
+    path readcount
 
     script:
     """
@@ -346,6 +350,7 @@ process KRAKEN {
 
         python3 ${workflow.projectDir}/templates/evaluate.py kraken results.txt ${fastq} -o ${stats} --keep-files
     done
+    echo "kraken2, \$(( \$(wc -l < ${fastq}/*_1.fastq) / 4 ))" >> ${readcount}
     """
 }
 
@@ -367,6 +372,7 @@ process BLAST_X {
     val db_names                        // Names of the BLASTX database files
     path fastq                          // Path to the FASTQ files for BLASTX processing
     path stats
+    path readcount
 
     output:
     path fastq                          // Path to the modified FASTQ files
@@ -384,22 +390,7 @@ process BLAST_X {
             python3 ${workflow.projectDir}/templates/evaluate.py blastx result.txt ${fastq} -o ${stats} --keep-files
         done
     done
-    """
-}
-
-process CHUNKING {
-    // debug true
-
-    input:
-    path fastq
-
-    output:
-    path "chunks/*"
-
-    script:
-    """
-    echo "Chunking ${fastq} directory..."
-    python3 ${workflow.projectDir}/templates/chunking.py --input_folder ${fastq} --output_folder ./ --reads_per_chunk ${params.reads_per_chunk}
+    echo "blastx, \$(( \$(wc -l < ${fastq}/*_1.fastq) / 4 ))" >> ${readcount}
     """
 }
 
@@ -449,6 +440,7 @@ process BLAST_N {
             python3 ${workflow.projectDir}/templates/evaluate.py blastn result.txt ${fastq} -o ${stats} --keep-files
         done
     done
+    echo "blastn, \$(( \$(wc -l < ${fastq}/*_1.fastq) / 4 ))" >> ${readcount}
     """
 }
 process READSEEKER {
@@ -480,6 +472,7 @@ process READSEEKER {
     output:
     path fastq
     path stats
+    path readcount
 
     script:
     """
@@ -516,10 +509,12 @@ process COMPRESS_RESULTS {
     input:
     path fastq                                  // Path to the FASTQ files to be compressed
     path stats
+    path readcount
 
     output:
     path "${fastq}.tar.gz"                      // A compressed tar.gz archive of the FASTQ files
     path stats
+    path readcount
 
     script:
     """
