@@ -493,17 +493,17 @@ process COMPRESS_RESULTS {
     maxForks 1
     cpus 1
     memory '200 MB'
+    cache false
 
-    container 'file://../images/blast.sif'
-    shell '/usr/bin/bash'
+    container "file://${workflow.projectDir}/../images/dummy.sif"
+    shell "/bin/bash"
 
-    // publishDir params.output, mode: 'copy'      // BUG: this just moves a symlink to the output folder. It's broken, because the original fastq files are being deleted 
-    
-    publishDir {
+    stageInMode 'copy'    
+    publishDir {                                    // final subfolder for each accession id stored with stats, readcount
         def name = fastq.getBaseName()
         def match = (name =~ /(SRR\d+)/)
         def accession = match ? match[0][1] : name
-        return "data/${accession}"
+        return "${params.output}/${workflow.runName}/${accession}"
     }, mode: 'move'
     
     input:
