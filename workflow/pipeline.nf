@@ -371,6 +371,8 @@ process BLAST_X {
     output:
     path fastq                          // Path to the modified FASTQ files
     path stats
+    path readcount
+    val(true)               // reference: https://nextflow-io.github.io/patterns/state-dependency/
 
     script:
     """
@@ -419,10 +421,14 @@ process BLAST_N {
     val db_names            // Names of the BLASTN database files
     path fastq              // Path to the FASTQ files for BLASTN processing
     path stats
+    path readcount
+    val mutex               // Mutex
 
     output:
     path fastq              // Path to the modified FASTQ files
     path stats
+    path readcount
+    val mutex
 
     /*
         Info in line calling blastn -db ... : You're directory structure might look different. 
@@ -468,6 +474,8 @@ process READSEEKER {
     input:
     path fastq
     path stats
+    path readcount
+    val mutex
 
     output:
     path fastq
@@ -625,8 +633,51 @@ workflow {
     ch_mapping = params.skip_mapping ? ch_fastq : MAPPING(get_parent_name(params.mapping_database), get_name(params.mapping_database), ch_fastq_dir, ch_stats, ch_readscount)
     ch_kraken = params.skip_kraken ? ch_fastq : KRAKEN(params.kraken2_database, ch_mapping)
     ch_blastx = params.skip_blastx ? ch_kraken : BLAST_X(get_parent_name(params.blastx_database), get_name(params.blastx_database), ch_kraken)
-    ch_blastn = params.skip_blastn ? ch_blastx : BLAST_N(get_parent_name(params.blastn_database), get_name(params.blastn_database), ch_blastx)
-    ch_readseeker = params.skip_readseeker ? ch_blastn : READSEEKER(ch_blastx)
-    ch_nn = params.skip_nn ? ch_blastn : NN_CLASSIFIER(ch_readseeker)
-    COMPRESS_RESULTS(ch_nn)
+    /* 
+        Scheduling helps with BlastN process memory usage (around 97%)
+        BLAST_X emits a mutex object (boolean) to trigger BLAST_N process.
+        Collecting all mutex objects before proceeding guarantees that, after the barrier, 
+        the Blast_N processes run independently with no other process executing in parallel.
+        Inputs in BLAST_X are strucured as follwed:
+        input:
+        path fastq      : channel[0]
+        path stats      : channel[1]
+        path readcount  : channel[2]
+        val mutex       : channel[3]      -> the other processes don't accept this channel, therefore it is removed
+
+        Since skipping processes is an option, inputs can be mixed up 
+        with mutex object. Neural network + compression process only need 
+
+        Mutex/ barrier (channel[3].collect()):
+        collects a bool value/ mutex from prior process
+        until all mutex vals are collected the next process starts
+        Important for memory consuming jobs and helps with out-of-memory crashes
+        side-effect: 
+            BlastN task used to tend to failure which would skip this task and 
+            rerun after Readseeker. This would break the chronological ordner of
+            the toolset.
+
+
+        correct way to resume: https://www.nextflow.io/docs/latest/cache-and-resume.html#resuming-from-a-specific-run
+        nextflow run <.nf> -resume session-ID
+    */
+
+
+    barrier = ch_blastx[3].collect()
+    ch_blastn = params.skip_blastn ? ch_blastx : BLAST_N(get_parent_name(params.blastn_database), get_name(params.blastn_database), ch_blastx[0], ch_blastx[1], ch_blastx[2], barrier) 
+    
+    barrier = ch_blastn[3].collect() 
+    ch_readseeker = params.skip_readseeker ? ch_blastn : READSEEKER(ch_blastn[0], ch_blastn[1], ch_blastn[2], barrier)
+
+    ch_nn = params.skip_nn ? ch_readseeker : NN_CLASSIFIER(ch_readseeker)
+    COMPRESS_RESULTS(ch_nn[0], ch_nn[1], ch_nn[2])
+
+
+    /* Code lines for without mutes. Remember to remove mutex as in/ output channel in each process */
+    // ch_blastn = params.skip_blastn ? ch_blastx : BLAST_N(get_parent_name(params.blastn_database), get_name(params.blastn_database), ch_blastx) 
+    // ch_readseeker = params.skip_readseeker ? ch_blastn : READSEEKER(ch_blastn)
+    // ch_nn = params.skip_nn ? ch_readseeker : NN_CLASSIFIER(ch_readseeker)
+    // COMPRESS_RESULTS(ch_nn)
+
+
 }
