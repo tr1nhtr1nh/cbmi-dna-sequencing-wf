@@ -48,8 +48,7 @@ process FETCH_ACCESSION_INFO {
     """
 }
 
-// fetch an accession, ensuring disk space is managed correctly
-process FETCH_ACCESSION {
+process WATCH_STORAGE {
     tag "$accession"
     // maxForks 1
     cpus 1
@@ -63,12 +62,14 @@ process FETCH_ACCESSION {
 
 
     input:
-    val accession   // accession ID to be fetched
+    val accession   // accession ID
     val est_size    // estimated size of the accession
-    path dl_com     // communication pipe for managing disk space
+    path dl_com      // communication pipe path for managing disk space (staged path)
+
 
     output:
-    path accession  // fetched accession file
+    val accession   // accession ID passed through
+    val est_size    // estimated size passed through
 
     script:
     """
@@ -81,12 +82,13 @@ process FETCH_ACCESSION {
 
             while IFS=' ' read -r type accession size; do
                 if [[ \$type == "D" ]]; then
-                    downloaded_acc["\$accession"]=\$size
+                    if [ ! -e "${workflow.workDir}/\$accession" ]; then
+                        downloaded_acc["\$accession"]=\$size
+                    fi
                 elif [[ \$type == "C" ]]; then
                     unset downloaded_acc["\$accession"]
                 fi
             done < "${dl_com}"
-        
         } 3< ${dl_com}
 
         for accession in "\${!downloaded_acc[@]}"; do
@@ -119,13 +121,74 @@ process FETCH_ACCESSION {
     fi
 
     while [ \$((used_storagespace + ${est_size})) -gt ${params.max_disk_usage} ]; do
+        echo \$((used_storagespace + ${est_size})) -gt ${params.max_disk_usage}
+        echo ${est_size}
         \$(wait_for_change)
         used_storagespace=\$(get_used_space)
     done
-
-    ${params.prefetch} --max-size ${params.max_disk_usage} ${accession}
-    flock -x ${dl_com} echo 'D ${accession} ${est_size}' >> ${dl_com}
     """
+}
+
+
+process FETCH_ACCESSION {
+    tag "$accession"
+    cpus 1
+    memory '200 MB'
+
+    cache 'lenient'
+    maxRetries 3
+
+    container "file://${workflow.projectDir}/../images/sra-tools.sif"
+    shell "/bin/bash"
+
+    input:
+    val accession   // accession ID to be fetched
+    val est_size    // estimated size of the accession
+
+    output:
+    path accession  // fetched accession file
+    val accession   // pass through accession ID
+    val est_size    // pass through estimated size
+
+    script:
+    """
+    ${params.prefetch} --max-size ${params.max_disk_usage} ${accession}
+    """
+}
+
+// register the downloaded accession in the communication file
+process UPDATE_DL_COM {
+    tag "$accession_id"
+    cpus 1
+    memory '200 MB'
+    cache false
+    stageInMode "symlink"
+
+    container "file://${workflow.projectDir}/../images/sra-tools.sif"
+    shell "/bin/bash"
+
+    input:
+    path accession      // fetched accession file
+    val accession_id    // accession ID that was downloaded
+    val est_size        // estimated size of the accession
+    val dl_com_path     // communication pipe path for managing disk space
+
+    output:
+    path accession      // pass through accession file path
+    val accession_id    // pass through accession ID
+    val est_size        // pass through estimated size
+
+        script:
+        """
+        (
+            flock -x 200
+            if awk -v acc="${accession_id}" '(\$1=="D"||\$1=="C") && \$2==acc{exit 0} END{exit 1}' "${dl_com_path}"; then
+                echo "Already registered ${accession_id}"
+            else
+                echo "D ${accession_id} ${est_size}" >> "${dl_com_path}"
+            fi
+        ) 200>> "${dl_com_path}"
+        """
 }
 
 // convert fetched accession data into FASTQ format
@@ -141,22 +204,62 @@ process FASTERQ {
 
 
     input:
-    path accession              // fetched accession file
-    path dl_com                 // communication pipe for managing disk space
+    val accession                                   // accession ID (string)
 
     output:
     path "${accession}_fastq"   // generated FASTQ files from the accession
-    path "stats.csv"
+    path "stats.csv"            // stats file
+    path "readscount.csv"       // readscount file
+    val accession               // pass through accession name
 
     script:
     """
-    ${params.fasterq_dump} ${accession} -O ${accession}_fastq
-    rm -r \$(readlink ${accession})
-    rm -r ${accession}
-    flock -x ${dl_com} echo 'C ${accession}' >> ${dl_com}
+    fastq="${accession}_fastq"
+    ${params.fasterq_dump} ${accession} -O \$fastq
     touch stats.csv
     """
 }
+
+process MARK_CONVERSION {
+    tag "$accession_id"
+    cpus 1
+    memory '200 MB'
+    cache false
+    stageInMode "symlink"
+
+    container "file://${workflow.projectDir}/../images/sra-tools.sif"
+    shell "/bin/bash"
+
+    input:
+    path fastq          // generated FASTQ files
+    path stats          // stats file
+    path readscount     // readscount file
+    val accession_id    // accession ID
+    path dl_com         // communication pipe path for managing disk space (staged path)
+    path sra_files      // prefetched sra files to free storage
+
+
+    output:
+    path fastq                  // pass through FASTQ files
+    path stats
+    path readscount
+
+    script:
+    """
+    (
+        flock -x 200
+        if awk -v acc="${accession_id}" '(\$1=="D"||\$1=="C") && \$2==acc{exit 0} END{exit 1}' "${dl_com}"; then
+            echo "Already registered ${accession_id}"
+        else
+            echo "C ${accession_id}" >> "${dl_com}"
+        fi
+    ) 200>> "${dl_com}"
+    #Uncomment line if we want to free storage. Will rerun FETCH_ACCESSION process 
+    #This line breaks the caching nf rules
+    #rm -r \$(readlink ${sra_files})
+    """
+}
+
 
 // map FASTQ files against a reference database using BWA-MEM2
 process MAPPING {
@@ -176,16 +279,19 @@ process MAPPING {
     val index_files         // Index files associated with the reference databases
     path fastq              // Path to the FASTQ files to be mapped
     path stats
+    path readcount
 
     output:
     path fastq              // Path to the modified FASTQ files
     path stats
+    path readcount
 
 
     // Update: use samtools 
     // Alternative without samtools: awk '($2 & 4) != 0' input.sam > unmapped.sam
     // move stats.csv to work dir (maybe output channel), so it does not append
     // samtools -f 12 (read unmapped + mate unmapped)
+    /* Can control copies and symlink with StageInMode in nextflow.config */
     script:
     """
     databases=(\$(echo "${mapping_databases}" | tr " " "\n"))
