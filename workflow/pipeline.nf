@@ -593,17 +593,37 @@ workflow {
         .splitCsv()
         .flatten()
         .set { ch_accession_list }
-    
+
+    /* Create download pipe file (dlCom.pipe) to watch for free storage space */
     dl_com = CREATE_DL_COM()
-
-    // fetch the sequencing data
+    
+    /* Fetch accession info about estimated download size*/
     ch_accession_info = FETCH_ACCESSION_INFO(ch_accession_list)
-    ch_accession = FETCH_ACCESSION(ch_accession_info, dl_com)
-    ch_fastq = FASTERQ(ch_accession, dl_com)
 
-    // analyse the sequencing data
-    ch_mapping = params.skip_mapping ? ch_fastq : MAPPING(get_parent_name(params.mapping_database), get_name(params.mapping_database), ch_fastq)
-    ch_kraken = params.skip_kraken ? ch_mapping : KRAKEN(params.kraken2_database, ch_mapping)
+    /* 
+        Checks accumulated storage size for 'D' noted SRR ids and
+        calculates a summed size. 
+        Process sets up a watch to check for file modification if
+        params.max_disk_size is reached
+     */
+    
+    ch_ready = WATCH_STORAGE(ch_accession_info, dl_com)
+    
+    /* Continue to prefetch accession data */
+    ch_accession = FETCH_ACCESSION(ch_ready)
+    
+    /* Mark downloaded SRA as 'D' 'SRA' 'size' in dlCom.pipe */
+    (ch_acc_path, ch_acc_id, ch_acc_est) = UPDATE_DL_COM(ch_accession, dl_com)
+    
+    /* Convert SRA to paired end reads */
+    (ch_fastq_dir, ch_stats, ch_readscount, ch_acc_id_out) = FASTERQ(ch_acc_id)
+
+    /* Mark sra entry in dlCom.pipe as 'C' (converted) and remove .sra file (triggers WATCH_STORAGE) */
+    ch_fastq = MARK_CONVERSION(ch_fastq_dir, ch_stats, ch_readscount, ch_acc_id_out, dl_com, ch_acc_path)
+
+    /* Begin analysis */
+    ch_mapping = params.skip_mapping ? ch_fastq : MAPPING(get_parent_name(params.mapping_database), get_name(params.mapping_database), ch_fastq_dir, ch_stats, ch_readscount)
+    ch_kraken = params.skip_kraken ? ch_fastq : KRAKEN(params.kraken2_database, ch_mapping)
     ch_blastx = params.skip_blastx ? ch_kraken : BLAST_X(get_parent_name(params.blastx_database), get_name(params.blastx_database), ch_kraken)
     ch_blastn = params.skip_blastn ? ch_blastx : BLAST_N(get_parent_name(params.blastn_database), get_name(params.blastn_database), ch_blastx)
     ch_readseeker = params.skip_readseeker ? ch_blastn : READSEEKER(ch_blastx)
