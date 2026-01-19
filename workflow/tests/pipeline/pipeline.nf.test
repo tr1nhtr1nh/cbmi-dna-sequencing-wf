@@ -1,0 +1,22 @@
+nextflow_pipeline {
+
+    name "Test Workflow pipeline.nf"
+    script "pipeline.nf"
+
+    test("Should run without failures") {
+
+        when {
+            params {
+                input_file = "${projectDir}/tests/mockdata/accessions.txt"
+            }
+        }
+
+        then {
+            assert workflow.success
+            // assert snapshot(process.out).match()
+            // assert file("output/ERR12325825/ERR12325825_fastq").exists()
+            // assert workflow.trace.tasks().size() == 1 * 9 // #accessions * #processes
+        }
+
+    }
+}
