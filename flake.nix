@@ -54,6 +54,7 @@
         ];
 
         shellHook = ''
+          export SLURM_CONF=/nix/store/yqxawxdrrcfm9zjgzihhs6nbglhi7995-etc-slurm/slurm.conf
           echo "Welcome to the development shell for the ngs pipeline project!"
         '';
       };
