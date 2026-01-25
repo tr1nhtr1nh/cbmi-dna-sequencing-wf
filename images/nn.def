@@ -1,23 +1,22 @@
-/*
-    Note:
-    This container needs to prefetch the model and data, so does not download on each container start. 
-    To keep the original dependencies the docker image from the paper is used.
-    Prefetch starts when classification.py runs. Here a custom test data is copied and used to speed up the classification part.
-    This container creation might take a while to finish (around 5-10min).
-
-    (Todo: fix broken links in the gitHub repository, so we don't have to copy local files)
-*/
-
+# Download takes a while ... 
 Bootstrap: docker
-From: deepprojects/tcngs:latest
-
-%files
-    ../workflow/TaxonomicClassification-NGS-NN/* /workspace/TaxonomicClassification-NGS-NN/
+From: python:3.10-slim
 
 %post
+    apt-get update
+    apt-get install -y procps git
 
-    pip install tables
+    pip install --upgrade pip
+    pip install pandas seaborn scikit-learn bio
+    pip install torch torchvision torchaudio
+    pip install pytorch-nlp transformers
+    pip install matplotlib_inline ipython ipykernel     # ipynb deps
 
-    # run classification.py
-    cd /workspace/TaxonomicClassification-NGS-NN
-    python3 classification.py --input testdata/test_1.fasta --cpu --verbose
+    git clone -b hotfix-broken-links https://github.com/CBMI-HTW/TaxonomicClassification-NGS-NN.git
+    cd TaxonomicClassification-NGS-NN
+
+
+    # run nn with sample fasta to start fetching process ... 
+    echo ">seq1" > test.fasta
+    echo "ACCCGATCGACGGCACGGTCAACT" >> test.fasta
+    python3 classification.py --input test.fasta
