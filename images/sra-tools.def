@@ -5,7 +5,3 @@ From: ncbi/sra-tools:3.2.1
    apk update
    apk upgrade
    apk add bash inotify-tools util-linux
-   sra-info --version
-   prefetch --version
-   fasterq-dump --version
-   vdb-dump --version
