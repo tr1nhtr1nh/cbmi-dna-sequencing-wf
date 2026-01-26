@@ -12,8 +12,8 @@ From: python:3.10-slim
     pip install pytorch-nlp transformers
     pip install matplotlib_inline ipython ipykernel     # ipynb deps
 
-    git clone -b hotfix-broken-links https://github.com/CBMI-HTW/TaxonomicClassification-NGS-NN.git
-    cd TaxonomicClassification-NGS-NN
+    git clone -b hotfix-broken-links https://github.com/CBMI-HTW/TaxonomicClassification-NGS-NN.git /workspace/TaxonomicClassification-NGS-NN
+    cd /workspace/TaxonomicClassification-NGS-NN
 
 
     # run nn with sample fasta to start fetching process ... 
