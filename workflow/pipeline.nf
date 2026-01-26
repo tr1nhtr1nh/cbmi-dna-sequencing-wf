@@ -7,6 +7,8 @@ process CREATE_DL_COM {
     tag 'CREATE_DL_COM'
     cpus 1
     memory '200 MB'
+    cache false
+    stageInMode "symlink"
 
     container 'file://../images/blast.sif'
     shell '/usr/bin/bash'
@@ -27,6 +29,7 @@ process FETCH_ACCESSION_INFO {
     // maxForks 1
     cpus 1
     memory '200 MB'
+    stageInMode {workflow.resume ? 'copy': 'symlink'} 
 
     maxRetries 3
     
@@ -52,6 +55,9 @@ process WATCH_STORAGE {
     tag "$accession"
     cpus 1
     memory '200 MB'
+    maxForks 1
+    cache false
+    stageInMode "symlink"
 
     errorStrategy { task.exitStatus == 28 ? 'ignore' : 'terminate'}
     maxRetries 3
@@ -133,6 +139,7 @@ process FETCH_ACCESSION {
     tag "$accession"
     cpus 1
     memory '200 MB'
+    stageInMode {workflow.resume ? 'copy': 'symlink'} 
 
     cache 'lenient'
     maxRetries 3
@@ -194,9 +201,9 @@ process UPDATE_DL_COM {
 // update: create stats.csv to store evaluate.py results
 process FASTERQ {
     tag "$accession"
-    maxForks 2
-    cpus 1
-    memory '1 GB'
+    cpus 4
+    memory '8 GB'
+    stageInMode {workflow.resume ? 'copy': 'symlink'} 
 
     container 'file://../images/sra-tools.sif'
     shell '/bin/bash'
@@ -267,6 +274,7 @@ process MAPPING {
     maxForks 1
     cpus params.cpu.mapping
     memory { params.mem.mapping * task.attempt }
+    stageInMode {workflow.resume ? 'copy': 'symlink'} 
 
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
@@ -315,7 +323,8 @@ process KRAKEN {
     tag "${fastq.baseName.replace('_fastq','')}"
     maxForks 1
     cpus params.cpu.kraken
-    memory { params.mem.kraken * task.attempt }
+    memory params.mem.kraken
+    stageInMode {workflow.resume ? 'copy': 'symlink'} 
 
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
@@ -359,6 +368,7 @@ process BLAST_X {
     maxForks 1
     cpus params.cpu.blastx
     memory { params.mem.blastx * task.attempt }
+    stageInMode {workflow.resume ? 'copy': 'symlink'} 
 
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
@@ -398,7 +408,8 @@ process BLAST_N {
     tag "${fastq.baseName.replace('_fastq','')}"
     maxForks 1
     cpus params.cpu.blastn
-    memory { params.mem.blastn * task.attempt }
+    memory params.mem.blastn
+    stageInMode {workflow.resume ? 'copy': 'symlink'} 
 
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
@@ -447,6 +458,7 @@ process READSEEKER {
     maxForks 1
     cpus params.cpu.readseeker
     memory { params.mem.readseeker * task.attempt }
+    stageInMode {workflow.resume ? 'copy': 'symlink'} 
 
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
@@ -490,6 +502,7 @@ process NN_CLASSIFIER {
     maxForks 2 // not all cpus are used: for one job around 30 cpus are occupied => a second job fits in ... 
     cpus params.cpu.nn_cls
     memory params.mem.nn_cls 
+    stageInMode {workflow.resume ? 'copy': 'symlink'} 
 
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
