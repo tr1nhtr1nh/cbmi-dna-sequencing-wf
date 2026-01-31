@@ -1,20 +1,18 @@
-# Note: build takes a while, because of big downloads ...  
 Bootstrap: docker
-From: python:3.10-slim
+From: python:3.9-slim
 
 %post
     apt-get update
     apt-get install -y procps git
 
-    pip install --upgrade pip
+    pip install transformers==4.26 tokenizers==0.13.3
+    pip install torch==1.8.1 torchvision==0.9.1 torchaudio==0.8.1
+    pip install pytorch-nlp
+    pip install numpy==1.26.4
     pip install pandas seaborn scikit-learn bio tables
-    pip install torch torchvision torchaudio
-    pip install pytorch-nlp transformers
-    pip install matplotlib_inline ipython ipykernel     # ipynb deps
 
     git clone -b hotfix-broken-links https://github.com/CBMI-HTW/TaxonomicClassification-NGS-NN.git /workspace/TaxonomicClassification-NGS-NN
     cd /workspace/TaxonomicClassification-NGS-NN
-
 
     # run nn with sample fasta to start fetching process ... 
     echo ">seq1" > test.fasta
