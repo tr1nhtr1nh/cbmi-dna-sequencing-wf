@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: ncbi/blast:latest
+From: ncbi/blast:2.17.0
 
 %post
     blastn -version
