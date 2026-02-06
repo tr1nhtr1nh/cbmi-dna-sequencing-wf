@@ -2,6 +2,14 @@
 
 This Nextflow-based pipeline is designed to process DNA sequencing data through various bioinformatics tools and identify those sequences that cannot be detected by conventional methods. The pipeline automates the retrieval, conversion, mapping, classification, and analysis of sequencing data. It is containerized, ensuring reproducibility and ease of deployment across different environments. The pipeline also includes mechanisms for managing disk space and handling errors, making it robust and adaptable for a wide range of sequencing analysis tasks.
 
+Additional de-novo NGS analysis tools are added to the pipeline. **[ReadSeeker](https://github.com/bnwlf/readseeker)** and a **[Taxonomic Classification Model](https://github.com/CBMI-HTW/TaxonomicClassification-NGS-NN)** using Language Models are used to classify the remaining sequences after the conventional methods. 
+
+Furthermore, the code and all dependencies have been configured for **NixOS**, and the environment can be started directly using:
+
+**`nix develop`**
+
+This project builds upon the work of Dominik Probst (2024).
+
 
 ## Features
 
@@ -16,12 +24,6 @@ This Nextflow-based pipeline is designed to process DNA sequencing data through 
 1. **Install Nextflow:** Ensure that Nextflow is installed on your system. [Nextflow installation instructions](https://www.nextflow.io/docs/latest/install.html)
 
 2. **Install Singularity (Optional):** If you plan to use Singularity containers, install Singularity following the instructions [here](https://docs.sylabs.io/guides/latest/admin-guide/installation.html).
-
-3. **Clone the Repository:**
-```
-git clone https://gitlab.rz.htw-berlin.de/s0574698/dna-sequencing-workflow.git
-cd dna-sequencing-workflow
-```
 
 ### Singularity
 
@@ -38,6 +40,12 @@ singularity build --fakeroot bwa-samtools.sif bwa-samtools.def
 singularity build --fakeroot kraken.sif kraken.def
 singularity build --fakeroot diamond.sif diamond.def
 singularity build --fakeroot blast.sif blast.def
+singularity build --fakeroot nn.sif nn.def
+```
+
+The ReadSeeker definition is in the /workflow/ReadSeekerWrapper directory:
+```
+singularity build --fakeroot readseeker_fastq.sif readseeker_fastq.def
 ```
 
 ## Usage
