@@ -1,6 +1,6 @@
 #!/usr/bin/env nextflow
 
-params.VERSION = '1.0.0'
+params.VERSION = '1.0.1'
 
 // create a pipe for download communication
 process CREATE_DL_COM {
@@ -10,8 +10,8 @@ process CREATE_DL_COM {
     cache false
     stageInMode "symlink"
 
-    container 'file://../images/blast.sif'
-    shell '/usr/bin/bash'
+    container "file://${workflow.projectDir}/../images/dummy.sif"
+    shell "/usr/bin/env bash"
 
     output:
     path ".dlCom.pipe"
@@ -26,16 +26,13 @@ process CREATE_DL_COM {
 // fetch accession information and estimate its size
 process FETCH_ACCESSION_INFO {
     tag "$accession"
-    // maxForks 1
     cpus 1
     memory '200 MB'
-    stageInMode {workflow.resume ? 'copy': 'symlink'} 
 
     maxRetries 3
     
-    container 'file://../images/sra-tools.sif'
-    shell '/bin/bash'
-
+    container "file://${workflow.projectDir}/../images/sra-tools.sif"
+    shell "/bin/bash"
 
     input:
     val accession   // accession ID for which information is to be fetched
@@ -59,12 +56,11 @@ process WATCH_STORAGE {
     cache false
     stageInMode "symlink"
 
-    errorStrategy { task.exitStatus == 28 ? 'ignore' : 'terminate'}
     maxRetries 3
+    errorStrategy { task.exitStatus == 28 ? 'ignore' : 'terminate'}
 
-    container 'file://../images/sra-tools.sif'
-    shell '/bin/bash'
-
+    container "file://${workflow.projectDir}/../images/sra-tools.sif"
+    shell "/bin/bash"
 
     input:
     val accession   // accession ID
@@ -94,6 +90,7 @@ process WATCH_STORAGE {
                     unset downloaded_acc["\$accession"]
                 fi
             done < "${dl_com}"
+
         } 3< ${dl_com}
 
         for accession in "\${!downloaded_acc[@]}"; do
@@ -139,7 +136,6 @@ process FETCH_ACCESSION {
     tag "$accession"
     cpus 1
     memory '200 MB'
-    stageInMode {workflow.resume ? 'copy': 'symlink'} 
 
     cache 'lenient'
     maxRetries 3
@@ -153,8 +149,6 @@ process FETCH_ACCESSION {
 
     output:
     path accession  // fetched accession file
-    val accession   // pass through accession ID
-    val est_size    // pass through estimated size
 
     script:
     """
@@ -164,10 +158,10 @@ process FETCH_ACCESSION {
 
 // register the downloaded accession in the communication file
 process UPDATE_DL_COM {
+    cache false
     tag "$accession_id"
     cpus 1
     memory '200 MB'
-    cache false
     stageInMode "symlink"
 
     container "file://${workflow.projectDir}/../images/sra-tools.sif"
@@ -183,6 +177,7 @@ process UPDATE_DL_COM {
     path accession      // pass through accession file path
     val accession_id    // pass through accession ID
     val est_size        // pass through estimated size
+    val(true)
 
         script:
         """
@@ -197,26 +192,24 @@ process UPDATE_DL_COM {
         """
 }
 
+
 // convert fetched accession data into FASTQ format
-// update: create stats.csv to store evaluate.py results
 process FASTERQ {
     tag "$accession"
     cpus 4
     memory '8 GB'
-    stageInMode {workflow.resume ? 'copy': 'symlink'} 
 
-    container 'file://../images/sra-tools.sif'
-    shell '/bin/bash'
-
+    container "file://${workflow.projectDir}/../images/sra-tools.sif"
+    shell "/bin/bash"
 
     input:
-    val accession                                   // accession ID (string)
+    path accession              // accession ID (string)
+    val update_done             // wait for UPDATE_DL_COM to write into .dlCom.pipe 
 
     output:
     path "${accession}_fastq"   // generated FASTQ files from the accession
     path "stats.csv"            // stats file
     path "readscount.csv"       // readscount file
-    val accession               // pass through accession name
 
     script:
     """
@@ -238,18 +231,12 @@ process MARK_CONVERSION {
     shell "/bin/bash"
 
     input:
-    path fastq          // generated FASTQ files
-    path stats          // stats file
-    path readscount     // readscount file
-    val accession_id    // accession ID
-    path dl_com         // communication pipe path for managing disk space (staged path)
-    path sra_files      // prefetched sra files to free storage
-
-
-    output:
-    path fastq                  // pass through FASTQ files
+    path fastq
     path stats
     path readscount
+    val accession_id    // accession ID
+    path dl_com         // communication pipe path for managing disk space
+    path sra_files      // Path to prefetched .sra file for deletion
 
     script:
     """
@@ -261,26 +248,28 @@ process MARK_CONVERSION {
             echo "C ${accession_id}" >> "${dl_com}"
         fi
     ) 200>> "${dl_com}"
-    #Uncomment line if we want to free storage. Will rerun FETCH_ACCESSION process 
-    #This line breaks the caching nf rules
-    #rm -r \$(readlink ${sra_files})
+#    Uncomment "rm -r ... " line if you want to free storage. This forces FETCH_ACCESSION to rerun
+#    Only uncomment when you don't need NF caching
+#    Enable caching                : set StageInMode = "copy" in nextflow.config
+#    Disable caching + save storage: set StageInMode = "symlink"
+
+#    rm -r \$(readlink ${sra_files})
     """
 }
 
 
-// map FASTQ files against a reference database using BWA-MEM2
 process MAPPING {
     tag "${fastq.baseName.replace('_fastq','')}"
     maxForks 1
     cpus params.cpu.mapping
     memory { params.mem.mapping * task.attempt }
-    stageInMode {workflow.resume ? 'copy': 'symlink'} 
 
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
-    container 'file://../images/bwa-mem.sif'
-    shell '/bin/bash'
+    container "file://${workflow.projectDir}/../images/bwa-mem.sif"
+    containerOptions "-B /data/"
+    shell "/bin/bash"
     
     input:
     val mapping_databases  // Reference databases for mapping
@@ -294,23 +283,17 @@ process MAPPING {
     path stats
     path readcount
 
-
-    // Update: use samtools 
-    // Alternative without samtools: awk '($2 & 4) != 0' input.sam > unmapped.sam
-    // move stats.csv to work dir (maybe output channel), so it does not append
-    // samtools -f 12 (read unmapped + mate unmapped)
-    /* Can control copies and symlink with StageInMode in nextflow.config */
     script:
     """
-    databases=(\$(echo "${mapping_databases}" | tr " " "\n"))
+    set -euo pipefail
+
+    databases=(\$(echo "${mapping_databases}" | tr -d '[],' | tr " " "\n"))
     file_names=(\$(echo "${index_files}" | sed "s/^\\[\\(.*\\)\\]\$/\\1/" | sed -e "s/, */,/g" | tr "," "\n"))
     for i in "\${!databases[@]}"; do
         fastq_files=\$(ls ${fastq}/*.fastq)
-        echo "ALIGNMENT: Start aligning reads to a reference genome: ${index_files}..."
         ${params.bwa} mem -t ${task.cpus} \${databases[i]}/\${file_names[i]} \$fastq_files > aln.sam
-        echo "FILTER: Start filtering aligned sam file..."
-        # samtools view -f 4 -h aln.sam > unmapped.sam
-        python3 ${workflow.projectDir}/templates/evaluate.py mapping aln.sam ${fastq} -o ${stats} --keep-files
+#        samtools view -f 4 -h aln.sam > unmapped.sam
+        evaluate mapping aln.sam ${fastq} -o ${stats} --keep-files
     done
     echo "mapping, \$(( \$(wc -l < ${fastq}/*_1.fastq) / 4 ))" >> ${readcount}
     """
@@ -324,16 +307,17 @@ process KRAKEN {
     maxForks 1
     cpus params.cpu.kraken
     memory params.mem.kraken
-    stageInMode {workflow.resume ? 'copy': 'symlink'} 
+    // stageInMode {workflow.resume ? 'copy': 'symlink'} 
 
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
-    container 'file://../images/kraken.sif'
-    shell '/bin/bash'
-    
+    container "file://${workflow.projectDir}/../images/kraken.sif"
+    containerOptions "-B /data/"
+    shell "/bin/bash"
+
     input:
-    val kraken2_database   // Kraken2 database for classification
+    val kraken2_database    // Kraken2 database for classification
     path fastq              // Path to the FASTQ files for Kraken2 classification
     path stats
     path readcount
@@ -345,18 +329,20 @@ process KRAKEN {
 
     script:
     """
-    databases=(\$(echo "${kraken2_database}" | tr " " "\n"))
+    set -euo pipefail
+
+    databases=(\$(echo "${kraken2_database}" | tr -d '[](),"' | tr " " "\n"))
     for database in "\${databases[@]}"; do
         fastq_files=\$(ls ${fastq}/*.fastq)
         count=\$(ls ${fastq}/*.fastq | wc -l )
 
         if [[ \$count -gt 1 ]]; then
-            kraken2 --threads ${task.cpus} --db \$database --paired \$fastq_files > results.txt
+            kraken2 --db \$database --paired \$fastq_files --threads ${task.cpus} --quick --out out-kraken2.txt
         else
-            kraken2 --threads ${task.cpus} --db \$database \$fastq_files > results.txt
+            kraken2 --db \$database \$fastq_files --threads ${task.cpus} --out out-kraken2.txt
         fi
 
-        python3 ${workflow.projectDir}/templates/evaluate.py kraken results.txt ${fastq} -o ${stats} --keep-files
+        evaluate kraken out-kraken2.txt ${fastq} -o ${stats} --keep-files
     done
     echo "kraken2, \$(( \$(wc -l < ${fastq}/*_1.fastq) / 4 ))" >> ${readcount}
     """
@@ -368,13 +354,13 @@ process BLAST_X {
     maxForks 1
     cpus params.cpu.blastx
     memory { params.mem.blastx * task.attempt }
-    stageInMode {workflow.resume ? 'copy': 'symlink'} 
 
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
-    container 'file://../images/diamond.sif'
-    shell '/bin/bash'
+    container "file://${workflow.projectDir}/../images/diamond.sif"
+    containerOptions "-B /data/"
+    shell "/bin/bash"
 
     input:
     val blastx_database
@@ -384,52 +370,54 @@ process BLAST_X {
     path readcount
 
     output:
-    path fastq                          // Path to the modified FASTQ files
+    path fastq      // Path to the modified FASTQ files
     path stats
     path readcount
-    val(true)               // reference: https://nextflow-io.github.io/patterns/state-dependency/
+    val(true)       // reference: https://nextflow-io.github.io/patterns/state-dependency/
 
     script:
     """
-    databases=(\$(echo ${blastx_database} | tr " " "\n"))
+    set -euo pipefail
+
+    databases=(\$(echo ${blastx_database} | tr -d '[],' | tr " " "\n"))
     file_names=(\$(echo "${db_names}" | sed "s/^\\[\\(.*\\)\\]\$/\\1/" | sed -e "s/, */,/g" | tr "," "\n"))
     for i in "\${!databases[@]}"; do
         for fastq_file in ${fastq}/*.fastq; do
-            diamond blastx -d \${databases[i]}/\${file_names[i]} -q \$fastq_file --very-sensitive --outfmt 6 qseqid -p ${task.cpus} --out result.txt
-            python3 ${workflow.projectDir}/templates/evaluate.py blastx result.txt ${fastq} -o ${stats} --keep-files
+            suffix=\$(basename "\${fastq_file##*_}" .fastq)
+            diamond blastx -d \${databases[i]}/\${file_names[i]} -q \$fastq_file --very-sensitive --outfmt 6 qseqid sseqid pident length evalue bitscore -p ${task.cpus} --out out-diamond-\$suffix.txt
+            evaluate blastx out-diamond-\$suffix.txt ${fastq} -o ${stats} --keep-files
         done
     done
-    echo "blastx, \$(( \$(wc -l < ${fastq}/*_1.fastq) / 4 ))" >> ${readcount}
+    echo "diamond, \$(( \$(wc -l < ${fastq}/*_1.fastq) / 4 ))" >> ${readcount}
     """
 }
 
-// run BLASTN on FASTQ files for nucleotide sequence similarity search
 process BLAST_N {
     tag "${fastq.baseName.replace('_fastq','')}"
     maxForks 1
     cpus params.cpu.blastn
     memory params.mem.blastn
-    stageInMode {workflow.resume ? 'copy': 'symlink'} 
 
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
-    container 'file://../images/blast.sif'
-    shell '/bin/bash'
-    
+    container "file://${workflow.projectDir}/../images/blast.sif"
+    containerOptions "-B /data/"
+    shell "/bin/bash"
+
     input:
     val blastn_database
     val db_names
     path fastq
     path stats
     path readcount
-    val mutex               // Mutex
+    val mutex               // Collect mutex object from prior process
 
     output:
     path fastq              // Path to the modified FASTQ files
     path stats
     path readcount
-    val mutex
+    val mutex               // Emit mutex object to next process
 
     /*
         Info in line calling blastn -db ... : You're directory structure might look different. 
@@ -438,41 +426,61 @@ process BLAST_N {
     */
 
     script:
+    /*
+        BlastN Warning: [blastn] Examining 5 or more matches is recommended for -max_targets_seq 1: update to 5
+        Notice: this code only works with fragmented databases. If you want to use custom 
+    */    
     """
-    databases=(\$(echo ${blastn_database} | tr " " "\n"))
+    set -euo pipefail
+
+    databases=(\$(echo "${blastn_database}" | tr -d '[],' | tr " " "\n"))
     file_names=(\$(echo "${db_names}" | sed "s/^\\[\\(.*\\)\\]\$/\\1/" | sed -e "s/, */,/g" | tr "," "\n"))
     for i in "\${!databases[@]}"; do
-        echo "Starting Basic Local Alignment Search Tool on ${workflow.projectDir}/refseq/\${databases[i]}/\${file_names[i]} database ..."
         for fastq_file in ${fastq}/*.fastq; do
-            sed -n '1~4s/^@/>/p;2~4p' \$fastq_file > acc.fasta
-            blastn -db ${workflow.projectDir}/refseq/\${databases[i]}/\${file_names[i]} -outfmt "6 qseqid sseqid pident length evalue bitscore" -num_threads ${task.cpus} -query acc.fasta -out result.txt
-            #rm acc.fasta
-            python3 ${workflow.projectDir}/templates/evaluate.py blastn result.txt ${fastq} -o ${stats} --keep-files
+            suffix=\$(basename "\${fastq_file##*_}" .fastq)
+
+#            for robust analysis we run blast on a custom database, which is not fragmented
+#            sed -n '1~4s/^@/>/p;2~4p' \$fastq_file > acc.fasta
+#            blastn -db \${databases[i]}/\$file_names -max_target_seqs 1 -outfmt "6 qseqid sseqid pident length evalue bitscore" -num_threads ${task.cpus} -query acc.fasta >> out-blastn-\$suffix.txt
+
+#           it we run nf-test only take two fragments from nt collection for speed
+            if [[ ${workflow.configFiles.size()} -ne 1 ]]; then
+                num_fragments=2
+            else
+                num_fragments=\$(( \$(ls \${databases[i]}/nt.* | grep -oP 'nt\\.\\d+' | sort -u | wc -l) - 1 ))
+            fi
+
+            echo "number of database fragments: \$num_fragments"
+            for j in \$(seq 0 \$num_fragments); do
+                db=\$(printf "nt.%03d" "\$j")
+                echo "Running BLAST \$db partition on \$fastq_file"
+
+                sed -n '1~4s/^@/>/p;2~4p' \$fastq_file > acc.fasta
+
+                blastn -db \${databases[i]}/\$db -max_target_seqs 1 -evalue 1e-5 \
+                    -outfmt "6 qseqid sseqid pident length evalue bitscore" \
+                    -num_threads ${task.cpus} -query acc.fasta >> out-blastn-\$suffix.txt
+
+                evaluate blastn out-blastn-\$suffix.txt ${fastq} -o ${stats} --keep-files
+            done
         done
     done
     echo "blastn, \$(( \$(wc -l < ${fastq}/*_1.fastq) / 4 ))" >> ${readcount}
     """
 }
+
 process READSEEKER {
     tag "${fastq.baseName.replace('_fastq','')}"
     maxForks 1
     cpus params.cpu.readseeker
     memory { params.mem.readseeker * task.attempt }
-    stageInMode {workflow.resume ? 'copy': 'symlink'} 
 
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
 
-    container "file://ReadSeekerWrapper/readseeker_fastq.sif"
-    shell '/usr/bin/bash'
-
-    /*
-        containerOptions: Need to bind multiple dirs, because 
-        we have symlink to project dir on /data/ and 
-        huggingface download stores data on /home/ dir...
-    */
-
-    containerOptions '-B /data/,/home/:/home'
+    container "file://${workflow.projectDir}/ReadSeekerWrapper/readseeker_fastq.sif"
+    containerOptions "-B /data/,/home/:/home/"
+    shell "/usr/bin/bash"
 
     input:
     path fastq
@@ -487,6 +495,8 @@ process READSEEKER {
 
     script:
     """
+    set -euo pipefail
+
     for fastq_file in ${fastq}/*.fastq; do
         readseeker_fastq -q \$fastq_file -o preds.txt
         evaluate readseeker preds.txt ${fastq} -t ${params.readseeker.threshold} -o ${stats} --keep-files
@@ -495,14 +505,11 @@ process READSEEKER {
     """
 }
 
-// readseeker removes linecount - 2 (unsure)
-
 process NN_CLASSIFIER {
     tag "${fastq.baseName.replace('_fastq','')}"
     maxForks 2 // not all cpus are used: for one job around 30 cpus are occupied => a second job fits in ... 
     cpus params.cpu.nn_cls
     memory params.mem.nn_cls 
-    stageInMode {workflow.resume ? 'copy': 'symlink'} 
 
     errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
     maxRetries 3
@@ -533,12 +540,10 @@ process NN_CLASSIFIER {
         classification --input \$filename.fasta --cpu --verbose
         evaluate-nn nn results/result_dataframe.h5 ${fastq} -o ${stats} --keep-files 
     done
+#    rm -r results/
+    echo "nn-classifier, \$(( \$(wc -l < ${fastq}/*_1.fastq) / 4 ))" >> ${readcount}
     """
 }
-
-
-
-// Todo: use samtools to create bam files ?
 
 // compress the results into a tar.gz archive
 process COMPRESS_RESULTS {
@@ -551,7 +556,7 @@ process COMPRESS_RESULTS {
     shell "/bin/bash"
 
     stageInMode 'copy'    
-    publishDir {                                    // final subfolder for each accession id stored with stats, readcount
+    publishDir {                    // final subfolder for each accession id stored with stats, readcount
         def name = fastq.getBaseName()
         def match = (name =~ /(SRR\d+)/)
         def accession = match ? match[0][1] : name
@@ -559,19 +564,19 @@ process COMPRESS_RESULTS {
     }, mode: 'move'
     
     input:
-    path fastq                                  // Path to the FASTQ files to be compressed
+    path fastq                      // Path to the FASTQ files to be compressed
     path stats
     path readcount
 
     output:
-    path "${fastq}.tar.gz"                      // A compressed tar.gz archive of the FASTQ files
+    path "${fastq}.tar.gz"          // A compressed tar.gz archive of the FASTQ files
     path stats
     path readcount
 
     script:
     """
     tar --use-compress-program="pigz" -cf ${fastq}.tar.gz ${fastq}/*
-    #rm -r ${fastq}
+    rm -r ${fastq}
     """
 }
 
@@ -633,8 +638,8 @@ workflow {
     log.info """\
             DNA-Sequencing-Workflow v${params.VERSION}
             ==========================
-            input from   : ${params.input_file}
-            output to    : ${params.output}
+            input from      : ${params.input_file}
+            output to       : ${params.output}
             --
             run as          : ${workflow.commandLine}
             started at      : ${workflow.start}
@@ -658,79 +663,34 @@ workflow {
     /* Create download pipe file (dlCom.pipe) to watch for free storage space */
     dl_com = CREATE_DL_COM()
     
-    /* Fetch accession info about estimated download size*/
+    // Fetch accession info about estimated download size
     ch_accession_info = FETCH_ACCESSION_INFO(ch_accession_list)
-
-    /* 
-        Checks accumulated storage size for 'D' noted SRR ids and
-        calculates a summed size. 
-        Process sets up a watch to check for file modification if
-        params.max_disk_size is reached
-     */
     
     ch_ready = WATCH_STORAGE(ch_accession_info, dl_com)
     
-    /* Continue to prefetch accession data */
-    ch_accession = FETCH_ACCESSION(ch_ready)
+    // Continue to prefetch accession data
+    ch_sra = FETCH_ACCESSION(ch_ready)
     
-    /* Mark downloaded SRA as 'D' 'SRA' 'size' in dlCom.pipe */
-    (ch_acc_path, ch_acc_id, ch_acc_est) = UPDATE_DL_COM(ch_accession, dl_com)
+    // Mark downloaded SRA as 'D' dlCom.pipe 
+    (ch_acc_path, ch_acc_id, ch_acc_est, update_done) = UPDATE_DL_COM(ch_sra, ch_ready, dl_com)
     
-    /* Convert SRA to paired end reads */
-    (ch_fastq_dir, ch_stats, ch_readscount, ch_acc_id_out) = FASTERQ(ch_acc_id)
+    // Convert SRA to paired end reads 
+    ch_fastq = FASTERQ(ch_sra, update_done)
 
-    /* Mark sra entry in dlCom.pipe as 'C' (converted) and remove .sra file (triggers WATCH_STORAGE) */
-    ch_fastq = MARK_CONVERSION(ch_fastq_dir, ch_stats, ch_readscount, ch_acc_id_out, dl_com, ch_acc_path)
+    // Mark sra entry in dlCom.pipe as 'C' (converted) and remove (optionally) .sra file (triggers WATCH_STORAGE) 
+    MARK_CONVERSION(ch_fastq, ch_acc_id, dl_com, ch_sra)
 
-    /* Begin analysis */
-    ch_mapping = params.skip_mapping ? ch_fastq : MAPPING(get_parent_name(params.mapping_database), get_name(params.mapping_database), ch_fastq_dir, ch_stats, ch_readscount)
+    // Begin analysis 
+    ch_mapping = params.skip_mapping ? ch_fastq : MAPPING(get_parent_name(params.mapping_database), get_name(params.mapping_database), ch_fastq)
     ch_kraken = params.skip_kraken ? ch_fastq : KRAKEN(params.kraken2_database, ch_mapping)
     ch_blastx = params.skip_blastx ? ch_kraken : BLAST_X(get_parent_name(params.blastx_database), get_name(params.blastx_database), ch_kraken)
-    /* 
-        Scheduling helps with BlastN process memory usage (around 97%)
-        BLAST_X emits a mutex object (boolean) to trigger BLAST_N process.
-        Collecting all mutex objects before proceeding guarantees that, after the barrier, 
-        the Blast_N processes run independently with no other process executing in parallel.
-        Inputs in BLAST_X are strucured as follwed:
-        input:
-        path fastq      : channel[0]
-        path stats      : channel[1]
-        path readcount  : channel[2]
-        val mutex       : channel[3]      -> the other processes don't accept this channel, therefore it is removed
 
-        Since skipping processes is an option, inputs can be mixed up 
-        with mutex object. Neural network + compression process only need 
-
-        Mutex/ barrier (channel[3].collect()):
-        collects a bool value/ mutex from prior process
-        until all mutex vals are collected the next process starts
-        Important for memory consuming jobs and helps with out-of-memory crashes
-        side-effect: 
-            BlastN task used to tend to failure which would skip this task and 
-            rerun after Readseeker. This would break the chronological ordner of
-            the toolset.
-
-
-        correct way to resume: https://www.nextflow.io/docs/latest/cache-and-resume.html#resuming-from-a-specific-run
-        nextflow run <.nf> -resume session-ID
-    */
-
-
-    barrier = ch_blastx[3].collect()
+    barrier = params.skip_blastx ? channel.of(true).collect() : ch_blastx[3].collect()
     ch_blastn = params.skip_blastn ? ch_blastx : BLAST_N(get_parent_name(params.blastn_database), get_name(params.blastn_database), ch_blastx[0], ch_blastx[1], ch_blastx[2], barrier) 
     
-    barrier = ch_blastn[3].collect() 
+    barrier = params.skip_blastn ? channel.of(true).collect() : ch_blastn[3].collect()
     ch_readseeker = params.skip_readseeker ? ch_blastn : READSEEKER(ch_blastn[0], ch_blastn[1], ch_blastn[2], barrier)
 
     ch_nn = params.skip_nn ? ch_readseeker : NN_CLASSIFIER(ch_readseeker)
     COMPRESS_RESULTS(ch_nn[0], ch_nn[1], ch_nn[2])
-
-
-    /* Code lines for without mutes. Remember to remove mutex as in/ output channel in each process */
-    // ch_blastn = params.skip_blastn ? ch_blastx : BLAST_N(get_parent_name(params.blastn_database), get_name(params.blastn_database), ch_blastx) 
-    // ch_readseeker = params.skip_readseeker ? ch_blastn : READSEEKER(ch_blastn)
-    // ch_nn = params.skip_nn ? ch_readseeker : NN_CLASSIFIER(ch_readseeker)
-    // COMPRESS_RESULTS(ch_nn)
-
-
 }

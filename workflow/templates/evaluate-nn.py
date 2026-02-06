@@ -1,3 +1,4 @@
+import argparse
 import csv
 import pandas as pd
 import os
@@ -40,7 +41,6 @@ def evaluate(path, analyse_type, keep_files):
     if args.type == 'nn':
         df = pd.read_hdf(path, columns=["seq_id", "species_pred"])
         df["seq_id"] = df["seq_id"].str.split().str[0].str.lstrip(">")
-        # df.to_csv("cls_results.csv", index=False)                           # store cls results into csv
         for index, line in df.iterrows():
             analyse_function(matched_lines, line)
         if not keep_files:
@@ -51,7 +51,10 @@ def evaluate(path, analyse_type, keep_files):
 def evaluateNN(matched_lines, line):
     """
     Evaluates the Taxonomic NGS NN classification. 
-    If the predicted species of a sequence equals 2 (classified as mammal), than this sequence gets removed.  
+    Records classified as mammal get removed.
+    Prediction is structured as followed: 
+    header | frame | species (0: viral, 1: bacterial and 2: mammals)
+    reference: https://github.com/CBMI-HTW/TaxonomicClassification-NGS-NN
     
     Params:
     matched_lines (set): Set to which the matched sequence ids will be added.
@@ -93,7 +96,6 @@ def main(args):
         writeOutputCSV(args.output, matched_acc)
 
 if __name__ == "__main__":
-    import argparse
     
     parser = argparse.ArgumentParser()
     

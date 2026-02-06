@@ -1,7 +1,6 @@
 # references:
 # https://wiki.nixos.org/wiki/Flakes 
 # https://www.youtube.com/watch?v=JCeYq72Sko0&t=803s
-# Alternative: create env with conda
 
 {
   description = "A flake file for the master's thesis project with cbmi and the ngs pipeline";
@@ -15,7 +14,7 @@
       system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; config.allowUnfree = true; };
 
-      # Add python env for TaxonomicClassification debugging
+      # Add python env for TaxonomicClassification
       torchnlp = pkgs.python312Packages.buildPythonPackage rec {
         pname = "pytorch-nlp";
         version = "0.5.0";
@@ -41,16 +40,34 @@
         torchaudio
         torchnlp
         tables
+        pip
       ]);
+      
+      # Add jupyter notebook env
+      jupyterEnv = pkgs.python312.withPackages (ps: with ps; [
+          numpy
+          pandas
+          seaborn
+          scikit-learn
+          biopython
+          ete3
+          jupyter
+          plotly
+      ]);
+
     in {
       devShells.${system}.default = pkgs.mkShell {
         buildInputs = [
           pkgs.git
           pkgs.nextflow
-          # pkgs.nf-test
+          pkgs.nf-test
           pkgs.singularity
           pkgs.pigz
-          pythonEnv     # development for Taxonomic NGS NN
+          pkgs.seqkit
+          pkgs.slurm
+          pkgs.lsof
+          # pythonEnv     # deps for Taxonomic NGS NN debugging
+          # jupyterEnv
         ];
 
         shellHook = ''
