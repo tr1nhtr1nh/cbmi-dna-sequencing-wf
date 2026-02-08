@@ -1,0 +1,17 @@
+Bootstrap: docker
+From: alpine:3.20.2
+
+%post
+   apk update
+   apk upgrade
+   apk add bash tar libc6-compat perl make g++ zlib-dev python3 wget rsync
+
+   wget https://github.com/DerrickWood/kraken2/archive/refs/tags/v2.1.6.tar.gz
+   tar x -zf v2.1.6.tar.gz --no-same-owner
+   rm v2.1.6.tar.gz
+
+   cd /kraken2-2.1.6
+   ./install_kraken2.sh /opt
+
+%environment
+   export PATH=$PATH:/opt

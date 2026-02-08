@@ -1,0 +1,7 @@
+Bootstrap: docker
+From: ncbi/sra-tools:3.2.1
+
+%post
+   apk update
+   apk upgrade
+   apk add bash inotify-tools util-linux
